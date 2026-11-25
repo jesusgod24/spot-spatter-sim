@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Interactive spot-weld spatter simulator: see why spot welds spatter and how to prevent it.">
+<title>Spot Spatter Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE work explainer for Welding Shop team and management: clear, technical, calm
+   IDEA a cutaway macro-section of a spot weld under a weld-timer screen: set the schedule, fire, watch
+   PICTURE live cross-section (gold cap tips, 2 or 3 sheets, nugget, corona-bond limits, sparks, zoom lens) + timer chart
+   COLOUR white / graphite stage; gold tips, molten orange nugget, containment blue, spatter red
+   TYPE IBM Plex Sans Thai 700 + 400
+   LAYOUT sticky bar (plant, layers, language, present), title, case tabs, stage + controls, explanation, stack/chisel, overview */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#111519);--ink:light-dark(#151a20,#e7ecf0);--mut:light-dark(#56616c,#9ba7b2);--pan:light-dark(#f2f4f6,#1a2027);--line:light-dark(#d9dee3,#2c343c);--gold:light-dark(#9a6f00,#e8b923);--melt:#ff7a1a;--hold:light-dark(#2c7cd0,#5aa9e6);--red:light-dark(#d0261c,#ff5a4a);--ok:light-dark(#1d7f47,#4cc98a);--amb:light-dark(#a86200,#f0a640)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "IBM Plex Sans Thai","Leelawadee UI","Noto Sans Thai",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(20px,3vw,44px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-size:clamp(30px,4vw,44px);line-height:1.08;letter-spacing:-.02em;margin:0 0 10px;text-wrap:balance}
+h2{font-size:24px;line-height:1.2;margin:0 0 8px}
+h3{font-size:17px;margin:0 0 8px}
+.lead{max-width:70ch;margin:0;color:var(--mut)}
+.lead b{color:var(--ink)}
+button,select,input{font:inherit}
+button{font-size:15px;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--mut)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--hold);outline-offset:2px}
+[aria-pressed=true].tg{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1240px;margin:0 auto;padding:8px max(5vw,16px);display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.brand{font-weight:700;margin-right:auto;white-space:nowrap}
+.grp{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
+.grp button{border:0;border-radius:0;min-width:52px}
+.grp button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.pri{background:var(--melt);border-color:var(--melt);color:#1b1006;font-weight:700}
+.pri:hover{border-color:#c95500}
+.plantb{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px;max-width:920px}
+.rule{background:var(--pan);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.rule i{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;color:#fff}
+.rule span{color:var(--mut);font-size:14px}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:4px max(5vw,16px) 10px;scroll-padding-inline:max(5vw,16px);max-width:calc(1240px + 10vw);margin:0 auto}
+.tabs button{flex:none}
+.tabs button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sim{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:20px;align-items:start}
+.stage{background:linear-gradient(#1c2229,#0e1216);border-radius:14px;overflow:hidden;color:#dde5eb;display:flex;flex-direction:column}
+.fig{position:relative}.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+.main .st{flex:none;height:clamp(380px,44vw,560px)}
+.st{flex:1}
+.ch{height:180px;border-top:1px solid #2a323a;flex:none}
+.leg{display:flex;flex-wrap:wrap;gap:6px 16px;padding:9px 14px 11px;font-size:13px;color:#b9c4cd;border-top:1px solid #2a323a}
+.leg span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:10px;border-radius:3px;display:inline-block}
+.panel{background:var(--pan);border-radius:14px;padding:18px}
+.kind{font-size:14px;color:var(--mut);margin:0 0 10px}
+.n3{font-size:14px;margin:10px 0 0;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--hold) 12%,transparent)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}
+.seg button[data-m=ok]{border-color:var(--ok);color:var(--ok)}
+.seg button[data-m=ng]{border-color:var(--red);color:var(--red)}
+.seg button[aria-pressed=true][data-m=ok]{background:var(--ok);color:#fff}
+.seg button[aria-pressed=true][data-m=ng]{background:var(--red);color:#fff}
+.ctl{margin:12px 0}
+.ctl label,.ctl .lb{display:flex;justify-content:space-between;gap:8px;font-size:15px}
+.ctl output{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rng{position:relative}
+.rng .lim{position:absolute;top:2px;bottom:2px;width:3px;margin-left:-1px;background:var(--red);border-radius:2px;pointer-events:none}
+input[type=range]{width:100%;height:32px;accent-color:var(--gold);margin:2px 0 0;position:relative}
+.limt{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--mut)}
+.linkb{background:none;border:0;padding:0 2px;min-height:32px;color:var(--hold);text-decoration:underline;font-size:13px}
+.pick{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.pick button{flex:1;min-width:70px}
+.pick button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.play{display:flex;gap:8px;margin:14px 0 8px}
+.play .pri{flex:1}
+.now{font-size:14px;color:var(--mut);font-variant-numeric:tabular-nums;min-height:1.6em}
+.mt{margin:9px 0}
+.mh{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.mh b{white-space:nowrap;font-variant-numeric:tabular-nums}
+.tr{position:relative;height:12px;background:color-mix(in srgb,var(--mut) 22%,transparent);border-radius:6px;margin-top:4px}
+.tr i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
+.tr em{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--red)}
+.tr em.cb{background:var(--hold);width:3px}
+.tr em.lo,.tr em.tg{background:var(--mut);top:0;bottom:0;width:2px;opacity:.8}
+.tr em.tg{opacity:.45}
+.mkey{font-size:13px;color:var(--mut);margin:2px 0 0}
+.verdict{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:15px}
+.verdict.ok{background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.verdict.ng{background:color-mix(in srgb,var(--red) 14%,transparent)}
+.verdict.amb{background:color-mix(in srgb,var(--amb) 16%,transparent)}
+.verdict strong{display:block;font-size:17px}
+.verdict.ok strong{color:var(--ok)}.verdict.ng strong{color:var(--red)}.verdict.amb strong{color:var(--amb)}
+.try{font-size:14px;margin:12px 0 0;color:var(--mut)}
+.keys{font-size:13px;color:var(--mut);margin:8px 0 0}
+kbd{font:12px/1 ui-monospace,monospace;border:1px solid var(--line);border-radius:4px;padding:2px 5px;background:var(--bg)}
+.ex{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:16px}
+.ex ul,.ex ol{margin:0;padding-left:1.2em}
+.ex li{margin-bottom:6px}
+.ex section{border-top:3px solid var(--line);padding-top:12px}
+.ex section:nth-child(1){border-color:var(--melt)}.ex section:nth-child(2){border-color:var(--hold)}.ex section:nth-child(3){border-color:var(--ok)}
+.src{font-size:13px;color:var(--mut);margin:14px 0 0}
+.alt{background:var(--pan)}
+.chk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:24px;margin-top:14px}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:14px;color:var(--mut);font-weight:600}
+td select,td input,.dlg select,.dlg input{font-size:16px;min-height:40px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+td input[type=number],.dlg input[type=number]{width:6em}
+td input[type=checkbox]{width:22px;height:22px;accent-color:var(--gold)}
+.chip{display:inline-block;padding:1px 8px;border-radius:99px;font-size:13px;font-weight:600;white-space:nowrap}
+.chip.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.chip.ng{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.chip.c{background:color-mix(in srgb,var(--amb) 18%,transparent);color:var(--amb)}
+.chip.na{background:color-mix(in srgb,var(--mut) 18%,transparent);color:var(--mut)}
+.res{margin:12px 0 0;padding:12px 14px;border-radius:10px;background:var(--pan)}
+.res b{display:block}
+.cond{list-style:none;padding:0;margin:8px 0 0}
+.cond li{margin:4px 0}
+#ov tr{cursor:pointer}
+#ov tr:hover{background:color-mix(in srgb,var(--melt) 8%,transparent)}
+.harm{display:grid;grid-template-columns:repeat(auto-fit,minmax(14em,1fr));gap:14px;margin-top:14px}
+.harm div{background:var(--bg);border-radius:10px;padding:12px 14px;border:1px solid var(--line)}
+.note{font-size:13px;color:var(--mut);margin-top:16px;max-width:86ch}
+/* dialog */
+.dlg{position:fixed;inset:0;z-index:60;background:rgba(8,10,12,.55);display:grid;place-items:center;padding:16px}
+.dlg[hidden]{display:none}
+.dlg-box{background:var(--bg);color:var(--ink);border-radius:14px;max-width:620px;width:100%;max-height:calc(100vh - 32px);overflow:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.row.end{justify-content:flex-end}
+.row[hidden]{display:none}
+.dlg td{vertical-align:middle}
+.msg{min-height:1.5em;font-size:14px;color:var(--ok);margin:4px 0 0}
+/* presentation */
+.pv{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;grid-template-rows:auto minmax(0,1fr);padding:10px max(2vw,12px) 12px}
+.pv[hidden]{display:none}
+.pv-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding-bottom:8px}
+.pv-top .n{font-weight:700;font-variant-numeric:tabular-nums}
+.pv-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto;justify-content:flex-end}
+.dots{display:flex;gap:5px;flex-wrap:wrap}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--melt)}
+.pv-main{min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px}
+.pv-main.full{display:block;overflow:auto}
+.pv-head h2{font-size:clamp(22px,2.2vw,32px);line-height:1.15;margin:0 0 8px;text-wrap:balance}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;font-size:clamp(15px,1.15vw,18px)}
+.facts div{border-top:3px solid var(--line);padding-top:6px}
+.facts div:nth-child(1){border-color:var(--melt)}.facts div:nth-child(2){border-color:var(--hold)}.facts div:nth-child(3){border-color:var(--ok)}
+.facts b{display:block;font-size:13px;color:var(--mut);font-weight:600}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto minmax(0,1fr) auto;column-gap:14px;row-gap:6px;min-height:0}
+.pair.one{grid-template-columns:minmax(0,1fr)}
+.pcard{display:grid;grid-row:span 3;grid-template-rows:subgrid;min-height:0}
+.phd{display:flex;align-items:center;align-self:start;gap:8px;flex-wrap:wrap;font-size:15px}
+.phd .chip{font-size:15px;padding:3px 12px}
+.pcard .stage{min-height:0}
+.pcard .st{min-height:200px}
+.pcard .ch{height:104px}
+.pcard .verdict{margin:0;font-size:15px;padding:8px 12px}
+.mark{flex:none;display:inline-block;vertical-align:middle}
+.vh{display:flex;gap:12px;align-items:flex-start}
+.why{color:var(--red);font-weight:700;margin:0 0 4px;font-size:15px}
+.phd .why{flex-basis:100%;font-size:16px;margin:0}
+.phd .why[hidden]{display:none}
+.seg button{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.pcard .verdict strong{font-size:16px}
+.pv-leg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:var(--mut)}
+.pv-full{max-width:1100px;margin:0 auto;width:100%;font-size:clamp(17px,1.4vw,20px)}
+.pv-full h1{font-size:clamp(32px,4vw,52px)}
+.pv-full .two{max-width:none}
+@media(max-width:900px){.sim,.chk{grid-template-columns:minmax(0,1fr)}.ex{grid-template-columns:minmax(0,1fr)}.pv-main{display:block;overflow:auto}.pair{grid-template-columns:minmax(0,1fr)}.pcard .st{height:300px;flex:none}.facts{grid-template-columns:minmax(0,1fr)}.pv-ctl{margin-left:0;justify-content:flex-start}}
+@media(max-width:600px){.two{grid-template-columns:minmax(0,1fr)}table{font-size:14px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:7.5em}.stack td::before{content:attr(data-l);float:inline-start;width:7em;margin-inline-start:-7.5em;color:var(--mut);font-size:13px}.brand{display:none}}
+</style>
+</head>
+<body>
+<div class="bar"><div class="bar-in">
+<span class="brand">Spot Spatter Simulator</span>
+<button id="plantb" class="plantb"></button>
+<div class="grp" role="group" aria-label="Layers"><button data-layers="2"></button><button data-layers="3"></button></div>
+<div class="grp" role="group" aria-label="Language"><button data-lang="th">TH</button><button data-lang="en">EN</button></div>
+<button class="pri" id="pres" data-t="pres"></button>
+</div></div>
+
+<header class="band" style="padding-bottom:14px"><div class="wrap">
+<h1 data-t="h1"></h1>
+<p class="lead" data-h="lead"></p>
+<div class="two">
+<div class="rule"><i style="background:var(--melt)">1</i><div><b data-t="m1"></b><br><span data-t="m1d"></span></div></div>
+<div class="rule"><i style="background:var(--red)">2</i><div><b data-t="m2"></b><br><span data-t="m2d"></span></div></div>
+</div>
+</div></header>
+
+<nav class="tabs" id="tabs"></nav>
+
+<main class="band" style="padding-top:8px"><div class="wrap sim">
+<div class="stage main" id="stage">
+<div class="fig st"><svg class="svs" role="img"></svg></div>
+<div class="leg"><span><i class="sw" style="background:#ff8a1f"></i><span data-t="lgN"></span></span><span><i class="sw" style="background:#5aa9e6"></i><span data-t="lgB"></span></span><span><i class="sw" style="background:#ffd25a"></i>Spatter</span><span><i class="sw" style="background:#e8b923"></i><span data-t="lgT"></span></span></div>
+<div class="fig ch"><svg class="cvs" role="img"></svg></div>
+<div class="leg"><span><i class="sw" style="background:#ff8a1f"></i><span data-t="lgI"></span></span><span><i class="sw" style="background:#5aa9e6;height:3px"></i><span data-t="lgF"></span></span><span><i class="sw" style="background:#ff5a4a;width:3px"></i><span data-t="lgS"></span></span><span>1 cyc = 20 ms (50 Hz)</span></div>
+</div>
+<aside class="panel">
+<h2 id="ct"></h2>
+<p class="kind" id="ck"></p>
+<p style="margin:0" id="cl"></p>
+<p class="n3" id="n3" hidden></p>
+<div class="seg"><button data-m="ok" id="bok"></button><button data-m="ng" id="bng"></button></div>
+<div id="ctl"></div>
+<div class="play"><button class="pri" id="bp"></button><button id="bs" aria-pressed="false" class="tg"></button></div>
+<div class="now" id="now"></div>
+<div id="mets"></div>
+<div class="verdict" id="vd"></div>
+<p class="try" id="tryit"></p>
+<p class="keys" data-h="keys"></p>
+</aside>
+</div></main>
+
+<section class="band" style="padding-top:0"><div class="wrap">
+<h2 id="xt"></h2>
+<div class="ex">
+<section><h3 data-t="xm"></h3><ol id="xm"></ol></section>
+<section><h3 data-t="xs"></h3><ul id="xs"></ul></section>
+<section><h3 data-t="xc"></h3><ul id="xc"></ul></section>
+</div>
+<p class="src" id="xsrc" hidden></p>
+</div></section>
+
+
+
+<section class="band"><div class="wrap">
+<h2 id="ovh"></h2>
+<p class="kind" style="margin:0" data-t="ovd"></p>
+<div class="scroll"><table class="stack" style="margin-top:12px"><thead><tr><th data-t="ovc1"></th><th data-t="ovc2"></th><th data-t="ovc3"></th><th data-t="ovc4"></th></tr></thead><tbody id="ov"></tbody></table></div>
+<h2 style="margin-top:30px" data-t="hh"></h2>
+<div class="harm"><div><h3 data-t="h1t"></h3><span data-t="h1d"></span></div><div><h3 data-t="h2t"></h3><span data-t="h2d"></span></div><div><h3 data-t="h3t"></h3><span data-t="h3d"></span></div><div><h3 data-t="h4t"></h3><span data-t="h4d"></span></div></div>
+<p class="note" data-t="note"></p>
+</div></section>
+
+<div class="dlg" id="dlg" hidden role="dialog" aria-modal="true" aria-labelledby="dlgt"><div class="dlg-box">
+<h2 id="dlgt" data-t="dlgT"></h2>
+<p class="kind" data-t="dlgD"></p>
+<div class="row"><label for="plsel"><b>Plant</b></label><select id="plsel"></select><button id="pladd" data-t="add"></button><button id="pldel" data-t="del"></button></div>
+<div class="row" id="newpl" hidden><input id="plname" maxlength="40" aria-label="Plant name"><button id="plok" class="pri" data-t="create"></button><button id="plno" data-t="cancel"></button></div>
+<div class="scroll"><table><thead><tr><th data-t="dF"></th><th data-t="dR"></th><th data-t="dV"></th><th data-t="dD"></th></tr></thead><tbody id="dlrows"></tbody></table></div>
+<div class="row"><b data-t="dView"></b><div class="grp" role="group"><button data-dview="pair"></button><button data-dview="seq"></button></div></div>
+<p class="msg" id="dlmsg" aria-live="polite"></p>
+<div class="row end"><button id="dldef" data-t="toDef"></button><button id="dlno" data-t="close"></button><button id="dlsave" class="pri" data-t="save"></button></div>
+</div></div>
+
+<div class="pv" id="pv" hidden>
+<div class="pv-top"><span class="n" id="pvn"></span><div class="dots" id="pvd"></div>
+<div class="pv-ctl">
+<button id="pvp" data-t="prev"></button><button id="pvnx" class="pri" data-t="next"></button>
+<button id="pvauto" class="tg" aria-pressed="false"></button><button id="pvloop" class="tg" aria-pressed="false"></button><button id="pvr" data-t="replay"></button>
+<div class="grp" role="group"><button data-view="pair"></button><button data-view="seq"></button></div>
+<div class="grp" role="group"><button data-layers="2"></button><button data-layers="3"></button></div>
+<div class="grp" role="group"><button data-lang="th">TH</button><button data-lang="en">EN</button></div>
+<button id="pvx" data-t="exit"></button>
+</div></div>
+<div class="pv-main" id="pvm"></div>
+</div>
+
+<script>
+/* Spot weld spatter model — simplified, for teaching trends only */
+const M=(()=>{
+const RT=3,RD=8,IMIN=5.5,INOM=9,E0B=(INOM*INOM-IMIN*IMIN)*12,TC=8,TO=6,JC=1.7,SC=2.0,PEXP=0.62,IREFP=0.21,LIFT=4,KZ=0.45;
+const DEF={
+ 2:{pl:[{t:0.8,s:0,ga:true},{t:0.8,s:0,ga:false}],I:9,W:12,U:0,S:25,H:10,F:2.5,Fok:2.5},
+ 3:{pl:[{t:0.7,s:0,ga:true},{t:1.2,s:2},{t:1.4,s:1}],I:10.6,W:16,U:0,S:25,H:10,F:3.0,Fok:3.0}};
+function base(n){const d=DEF[n];return {...d,pl:d.pl.map(x=>({...x})),ang:0,off:0,gap:0,edge:null,cont:0,ov:null,ovp:0,dmg:0,rB:8};}
+function place(p){const T=p.pl.reduce((a,b)=>a+b.t,0),R=p.rB||RD,dC=p.off+(2*R+T)*Math.tan(p.ang*Math.PI/180),m=dC/2,xE=p.edge==null?Infinity:p.edge,xO=p.ov==null?Infinity:p.ov,sg=seg(Math.min(xE,xO)-m);return {dC,m,xn:m+sg.c};}
+function circOverlap(d){d=Math.abs(d);if(d>=2*RT)return 0;return (2*RT*RT*Math.acos(d/(2*RT))-(d/2)*Math.sqrt(4*RT*RT-d*d))/(Math.PI*RT*RT);}
+function seg(a){if(a>=RT)return {f:1,c:0};if(a<=-RT+0.05)a=-RT+0.05;
+ const th=2*Math.acos(a/RT),As=RT*RT/2*(th-Math.sin(th)),full=Math.PI*RT*RT,keep=full-As,xs=4*RT*Math.pow(Math.sin(th/2),3)/(3*(th-Math.sin(th)));
+ return {f:keep/full,c:-(As*xs)/keep};}
+function geom(p){const pl=p.pl,n=pl.length,T=pl.reduce((a,b)=>a+b.t,0),zi=[];let z=0;for(let i=0;i<n-1;i++){z+=pl[i].t;zi.push(z);}return {n,T,zi,zc:T/2};}
+function dAt(rn,dz,hmax){const hn=Math.min(KZ*rn,hmax);return Math.abs(dz)<hn?2*rn*Math.sqrt(1-(dz/hn)**2):0;}
+function sim(p){
+ const g=geom(p),{n,T,zi,zc}=g,sf=Math.pow(T/1.6,PEXP),E0=E0B*sf,Iref=INOM*Math.pow(T/1.6,IREFP),hmax=0.45*T;
+ const tH=p.S+p.U+p.W+p.H,end=tH+TO,dt=0.25;
+ const dmg=p.dmg||0,dC=p.off+(2*(p.rB||RD)+T)*Math.tan(p.ang*Math.PI/180),m=dC/2,ovl=circOverlap(dC);
+ const xE=p.edge==null?Infinity:p.edge,xO=p.ov==null?Infinity:p.ov,xs=Math.min(xE,xO),sg=seg(xs-m);
+ const xn=m+sg.c,geo=Math.max(0.3,Math.sqrt(Math.max(ovl*sg.f,0))*(1-0.5*dmg)),lim=zi.map((_,i)=>{let L=xE;if(p.ov!=null&&(i===p.ovp-1||i===p.ovp))L=Math.min(L,xO);return L-xn-1.0;});
+ const gi=0; /* gap and low-force seam act on the 1st interface */
+ const out=[],ev=[];let E=0,tc=0,lE=-9,lS=-9,fH=0,crH=0;
+ for(let t=0;t<=end+1e-9;t+=dt){
+  let f=0,lift=0;
+  if(t<TC){const u=t/TC;lift=LIFT*(1-u*u*(3-2*u));}
+  else if(t<=tH){f=p.F*(1-Math.exp(-(t-TC)/4));fH=f;}
+  else{const u=Math.min(1,(t-tH)/TO);f=fH*Math.exp(-(t-tH)/0.8);lift=LIFT*u*u*(3-2*u);}
+  let I=0;
+  if(t>=TC&&t<=tH){if(t>=p.S&&t<p.S+p.U)I=p.I*(0.4+0.6*(t-p.S)/p.U);else if(t>=p.S+p.U&&t<p.S+p.U+p.W)I=p.I;}
+  if(I>0)tc+=dt;
+  const fe=Math.max(f-p.gap*1.3,0.08),soft=1+0.12*(1-Math.exp(-tc/3));
+  const rc=RT*Math.min(1.15,Math.max(0.3,Math.sqrt(fe/p.Fok)))*geo*soft;
+  let cr=t<TC?0:Math.min(1,fe/p.Fok)*(0.85+0.15*(soft-1)/0.12);if(t<=tH)crH=cr;else cr=crH;
+  const J=I>0?(I/Iref)/((rc/RT)**2)*(1+0.6*p.cont):0,Sx=I>0?((I/Iref)**2)*(1+3*p.cont+1.2*dmg)/((rc/RT)**2):0;
+  E+=Math.max(I*I-IMIN*IMIN,0)*dt*(RT/rc)*(1+0.8*p.cont);
+  let rn=E>0?0.85*RT*Math.pow(E/E0,0.4):0;
+  const rb0=1.05*rc,rb=lim.map(L=>Math.min(rb0,L));
+  if(I>0&&t-lE>=2){
+   let hit=-1;for(let i=0;i<n-1;i++){if(dAt(rn,zi[i]-zc,hmax)/2>rb[i]&&(hit<0||dAt(rn,zi[i]-zc,hmax)/2-rb[i]>dAt(rn,zi[hit]-zc,hmax)/2-rb[hit]))hit=i;}
+   if(J>JC||hit>=0){
+    let i=hit,k;
+    if(hit<0){i=p.gap>0?gi:zi.reduce((b,z,j)=>Math.abs(z-zc)<Math.abs(zi[b]-zc)?j:b,0);k=tc<=4?'init':'mid';}
+    else k=lim[hit]<rb0?(p.ov!=null&&(hit===p.ovp-1||hit===p.ovp)&&xO<=xE?'ovl':'edge'):(J>JC&&tc<=4?'init':'mid');
+    ev.push({t,k,i});lE=t;
+    if(hit>=0){const target=0.82*rb[hit];let lo=0,hi=rn;for(let q=0;q<30;q++){const mid=(lo+hi)/2;if(dAt(mid,zi[hit]-zc,hmax)/2>target)hi=mid;else lo=mid;}rn=lo;E=E0*Math.pow(rn/(0.85*RT),2.5);}
+   }
+  }
+  if(I>0&&Sx>SC&&t-lS>=2){ev.push({t,k:'surf',i:-1});lS=t;}
+  const d=zi.map(z=>dAt(rn,z-zc,hmax));
+  out.push({t,f,I,lift,rc,rb,rn,hn:Math.min(KZ*rn,hmax),d,J,Sx,cr});
+ }
+ const fin=out[Math.min(out.length-1,Math.round(tH/dt))];
+ const crit=zi.map((_,i)=>{const tm=Math.min(p.pl[i].t,p.pl[i+1].t);return {tm,lo:3*Math.sqrt(tm),tg:4*Math.sqrt(tm)};});
+ return {out,ev,end,tH,p,g,dC,xn,m,crit,fin,TC,TO};
+}
+
+function range(a,b){const lo=Math.min(a,b),hi=Math.max(a,b);if(lo===0)return 1;
+ if(lo===1){if(hi<=3)return 2;if(hi===4)return 3;return 4;}
+ if(lo===2){if(hi===2)return 2;if(hi===3)return 3;return 4;}return 4;}
+function chisel(p){const pl=p.pl,n=pl.length,res=[];
+ if(n===2)res.push({i:0,pair:[pl[0].s,pl[1].s],r:range(pl[0].s,pl[1].s)});
+ else{const [A,B,C]=pl.map(x=>x.s);res.push({i:0,pair:[A,Math.max(B,C)],r:range(A,Math.max(B,C))});res.push({i:1,pair:[C,Math.max(A,B)],r:range(C,Math.max(A,B))});}
+ let thin=null;
+ if(n===3){const a=pl[0],c=pl[2],t1=a.t,ok1=a.ga&&a.s===0,c1=t1>=0.7&&t1<=0.8&&c.t>=1.2,c2=t1<=0.65&&c.t>=1.0;thin={ga:a.ga,s270:a.s===0,tOk:c1||c2,ok:ok1&&(c1||c2),rule:t1<=0.65?2:1};}
+ return {res,thin};}
+return {sim,base,place,DEF,chisel,range,JC,SC,RT,RD,LIFT,TC};
+})();
+if(typeof module!=='undefined')module.exports=M;
+
+{
+const $=id=>document.getElementById(id);
+const r1=x=>Math.round(x*10)/10,r2=x=>Math.round(x*100)/100;
+const rs=(v,st)=>{const d=(String(st).split('.')[1]||'').length;return +(Math.round(v/st)*st).toFixed(d);};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SCL=['270','340–440','490–590','780–980','1180','≥1470 / HS'],NUM='①②③④⑤⑥⑦⑧⑨⑩⑪⑫';
+const CLR=2.5; /* tip-to-wall clearance incl. bend radius, mm */
+const S={th:{
+whyHi:(n,v,l)=>`NG เพราะ${n} ${v} เกินค่าแบ่ง ${l}`,whyLo:(n,v,l)=>`NG เพราะ${n} ${v} น้อยกว่าค่าแบ่ง ${l}`,whyDia:(d,v,l)=>`NG เพราะใช้ tip Ø${d} ระยะศูนย์ tip ถึงขอบเหลือ ${v} น้อยกว่าค่าแบ่ง ${l}`,
+pres:'▶ นำเสนอ',L2:'2 ชั้น',L3:'3 ชั้น',h1:'Spatter ในงานเชื่อม Spot เกิดจากอะไร',
+lead:'Spatter (スパッタ / ちり) คือโลหะหลอมที่พุ่งออกจากจุดเชื่อม ทุกสาเหตุย้อนกลับมาที่ <b>2 กลไก</b> นี้ เลือกหัวข้อ กด NG แล้วดูการเชื่อมตั้งแต่ gun อ้า ปิด เชื่อม จนเปิดออก',
+m1:'Nugget ล้นขอบเขตที่กดยึด',m1d:'ร้อนมากเกิน หรือขอบเขตที่ tip กดยึด (Corona bond) เล็กลง จนโลหะหลอมดันแผ่นแยกแล้วพุ่งออก',
+m2:'ร้อนกระจุกที่จุดสัมผัสเล็ก',m2d:'กระแสไหลผ่านพื้นที่เล็กเกินไป จุดนั้นหลอมทันทีโดยยังไม่มีอะไรกั้น (Initial / Surface spatter)',
+lgN:'Nugget (โลหะหลอม)',lgB:'ขอบเขตกดยึด (Corona bond)',lgT:'Cap tip (บนเคลื่อนที่ / ล่างยึดอยู่กับที่)',lgI:'กระแสเชื่อม (kA, แกนซ้าย)',lgF:'แรงกด Electrode (kN, แกนขวา)',lgS:'จังหวะเกิด Spatter',
+ok:'ปกติ (OK)',ng:'ผิดปกติ (NG)',play:'▶ เล่นการเชื่อม',stop:'■ หยุด',slow:'ช้า ×0.4',
+keys:'คีย์ลัด: <kbd>Space</kbd> เล่น/หยุด · <kbd>←</kbd> <kbd>→</kbd> เปลี่ยนหัวข้อ · <kbd>P</kbd> นำเสนอ',
+xm:'กลไก: เกิดขึ้นได้อย่างไร',xs:'อาการที่เห็นหน้างาน',xc:'ป้องกัน / จุดตรวจ',understand:'ทำความเข้าใจ: ',labx:'ภาพรวมของทุกสาเหตุ',kind:'ชนิดที่เกิด: ',tryp:'ลองดู: ',srcp:'อ้างอิง: ',
+n3:'3 ชั้น: Nugget เริ่มที่กลางความหนาของ stack แล้วโตออก Ø ที่รอยต่อฝั่งแผ่นบาง (1st×2nd) จึงเล็กกว่าฝั่งแผ่นหนา (2nd×3rd) เสมอ ถ้าเพิ่มความร้อนให้ฝั่งบางได้ขนาด ฝั่งหนาจะล้นขอบเขตกดยึดก่อน ช่วงค่าเชื่อมที่ใช้ได้จึงแคบกว่า 2 ชั้น',
+ph:{close:'ปิด gun',sq:'Squeeze',up:'Upslope',weld:'Weld',hold:'Hold',open:'เปิด gun'},
+contact:'จุดสัมผัสบน–ล่างเยื้อง',
+mN:'Nugget Ø',mJ:'ความหนาแน่นกระแสที่รอยต่อ',mS:'ความร้อนที่ผิว tip–แผ่น',noI:'ไม่มีกระแส',redl:'เส้นแดง',
+mkey:'ส้ม = Ø Nugget · ฟ้า = ขอบเขตกดยึด · ขีดเทา = 3√t และ 4√t',
+vNG:n=>`เกิด Spatter ${n} ครั้ง`,vFirst:c=>`ครั้งแรกที่ cycle ${c}: `,vLeft:'Nugget หลังเชื่อม',vOK:'OK ไม่มี Spatter',vLo:'ไม่มี Spatter แต่ Nugget ต่ำกว่า 3√t',vTg:'ต่ำกว่า 4√t ที่',inside:'อยู่ในขอบเขตกดยึด',
+K:{init:'Initial spatter (初期チリ)',mid:'Spatter ระหว่างแผ่น (中チリ): Nugget ล้นขอบเขตกดยึด',edge:'Spatter ทะลุออกทางขอบชิ้นงาน',ovl:'Spatter ออกทางปลายชิ้นที่ซ้อนไม่เต็ม',surf:'Surface spatter (表チリ) ที่ผิว tip–แผ่น'},
+IF2:['รอยต่อ'],IF3:['1st×2nd (ฝั่งบาง)','2nd×3rd (ฝั่งหนา)'],PN2:['แผ่นบน','แผ่นล่าง'],PN3:['1st','2nd','3rd'],
+lblUp:'Cap tip บน (เคลื่อนที่)',lblLo:'Cap tip ล่าง (ยึดอยู่กับที่)',lblUpS:'Tip บน',lblLoS:'Tip ล่าง',edgeL:'ขอบชิ้นงาน',endL:'ปลายชิ้น',zoom:'ซูม ×30 รอยต่อระหว่างแผ่น',zoomF:'ซูม ×30 หน้า tip กับผิวแผ่น',real:'สัมผัสจริง',
+faceOK:'หน้า tip R40',faceNG:'หน้า tip บุบ / ขีดข่วน',wallL:'ผนังชิ้นงาน (joggle)',
+limit:(pl,r,v)=>`เกณฑ์ ${pl}: OK ${r} ${v}`,edit:'แก้เกณฑ์',edgeD:'ระยะศูนย์ tip ถึงขอบ',
+plant:'Plant',defPlant:'Default (ค่ามาตรฐาน)',
+dlgT:'เงื่อนไข OK/NG ของแต่ละ Plant',dlgD:'ค่าเหล่านี้ใช้แบ่ง OK/NG และกำหนดจุดที่ simulation เริ่มเกิด Spatter (ค่าอื่นๆ เป็นค่าเริ่มต้น) บันทึกไว้ในเบราว์เซอร์นี้เท่านั้น คนอื่นจะไม่เห็น',
+add:'+ เพิ่ม Plant',del:'ลบ Plant นี้',delQ:'กดอีกครั้งเพื่อยืนยันลบ',create:'สร้าง',cancel:'ยกเลิก',dF:'หัวข้อ',dR:'OK เมื่อ',dV:'ค่าแบ่ง',dD:'Default',
+dView:'โหมดนำเสนอ:',toDef:'กลับค่า Default',close:'ปิด',save:'บันทึกและใช้',saved:'บันทึกแล้ว',dfNote:'Default แก้ไม่ได้ กด "+ เพิ่ม Plant" เพื่อสร้างชุดค่าของ Plant',nameNeed:'ใส่ชื่อ Plant',nameDup:'มีชื่อนี้แล้ว',badV:'ค่าต้องอยู่ในช่วง',
+vPair:'OK | NG พร้อมกัน',vSeq:'ทีละอัน',auto:'▶ เล่นอัตโนมัติ',autoOn:'■ หยุดอัตโนมัติ',loop:'⟲ วนซ้ำ',
+ovh:n=>`สรุป ${n} หัวข้อ: ต้นเหตุ ชนิด Spatter และจุดตรวจหลัก`,ovd:'แตะแถวเพื่อเปิดหัวข้อนั้นใน simulator',ovc1:'หัวข้อ',ovc2:'กลไก',ovc3:'ชนิด Spatter',ovc4:'จุดตรวจหลัก',
+hh:'ทำไมต้อง Spatterless',h1t:'คุณภาพสี',h1d:'เม็ด spatter ที่ติดผิว body ไปโผล่เป็นเม็ดนูนใต้สีหลัง ED/Paint ต้องขัดซ่อม',h2t:'ความแข็งแรง spot',h2d:'โลหะหลอมที่พุ่งออกคือเนื้อ Nugget ที่หายไป จุดเชื่อมเล็กลงหรือเกิดรูพรุน เสี่ยง spot หลุด',h3t:'วงจรเลวร้าย',h3d:'Spatter ติด jig / locate pin ทำให้ชิ้นต่อไปมี gap ซึ่งทำให้เกิด spatter มากขึ้นอีก',h4t:'งานซ่อมและความปลอดภัย',h4d:'เพิ่มงานเจียร ครีบคมบาดมือ ประกายไฟลวกผิวหรือเสี่ยงไฟไหม้',
+note:'แบบจำลองนี้เป็นแบบง่ายเพื่อให้เห็นแนวโน้มและเหตุผล (หน้าสัมผัส tip Ø6 mm, 2 ชั้น 0.8 + 0.8 mm, 3 ชั้น 0.7 + 1.2 + 1.4 mm) จุดที่เริ่มเกิด Spatter ของ 4 หัวข้อแรกถูกปรับให้ตรงกับค่าแบ่ง OK/NG ของ Plant ที่เลือก ตัวเลขอื่นเป็นค่าตัวอย่าง ไม่ใช่ Weld schedule หรือ standard ของ line',
+exit:'✕ ออก',prev:'‹ ก่อนหน้า',next:'ถัดไป ›',replay:'↻ เล่นซ้ำ',pvC:'สาเหตุ',pvE:'สิ่งที่เกิดขึ้น',pvP:'ป้องกัน / จุดตรวจ',pvSum:'สรุป: ต้นเหตุและจุดตรวจ',pvIntro:n=>`${n} หัวข้อที่จะดูต่อไป`},
+en:{
+whyHi:(n,v,l)=>`NG because ${n} ${v} exceeds the limit ${l}`,whyLo:(n,v,l)=>`NG because ${n} ${v} is below the limit ${l}`,whyDia:(d,v,l)=>`NG because the Ø${d} tip leaves only ${v} from tip centre to edge, below the limit ${l}`,
+pres:'▶ Present',L2:'2 layers',L3:'3 layers',h1:'What causes spatter in spot welding',
+lead:'Spatter (スパッタ / ちり) is molten metal expelled from the weld. Every cause comes back to <b>two mechanisms</b>. Pick a topic, press NG and watch the whole cycle: gun open, close, weld and open again.',
+m1:'Nugget outgrows the clamped zone',m1d:'Too much heat, or a smaller zone clamped by the tips (corona bond), lets molten metal force the sheets apart and escape.',
+m2:'Heat concentrated at a small contact',m2d:'Current passes through too small an area; that spot melts at once with nothing to hold it (initial / surface spatter).',
+lgN:'Nugget (molten metal)',lgB:'Clamped zone (corona bond)',lgT:'Cap tips (upper moves / lower fixed)',lgI:'Weld current (kA, left axis)',lgF:'Electrode force (kN, right axis)',lgS:'Spatter moment',
+ok:'Normal (OK)',ng:'Abnormal (NG)',play:'▶ Fire the weld',stop:'■ Stop',slow:'Slow ×0.4',
+keys:'Shortcuts: <kbd>Space</kbd> play/stop · <kbd>←</kbd> <kbd>→</kbd> change topic · <kbd>P</kbd> present',
+xm:'Mechanism: how it happens',xs:'What you see on the line',xc:'Prevention / check points',understand:'Understanding: ',labx:'All causes together',kind:'Type: ',tryp:'Try: ',srcp:'Reference: ',
+n3:'3 layers: the nugget starts at the centre of the stack thickness and grows outward, so its diameter at the thin-side interface (1st×2nd) is always smaller than at the thick side (2nd×3rd). Adding heat to size the thin side makes the thick side outgrow the clamped zone first, so the usable window is narrower than for 2 layers.',
+ph:{close:'Close',sq:'Squeeze',up:'Upslope',weld:'Weld',hold:'Hold',open:'Open'},
+contact:'Upper–lower contact offset',
+mN:'Nugget Ø',mJ:'Current density at the interface',mS:'Heat at the tip–sheet surface',noI:'no current',redl:'red line',
+mkey:'Orange = nugget Ø · blue = clamped zone · grey ticks = 3√t and 4√t',
+vNG:n=>`Spatter ×${n}`,vFirst:c=>`First at cycle ${c}: `,vLeft:'Nugget after weld',vOK:'OK, no spatter',vLo:'No spatter, but nugget below 3√t',vTg:'below 4√t at',inside:'inside the clamped zone',
+K:{init:'Initial spatter (初期チリ)',mid:'Spatter between sheets (中チリ): nugget outgrew the clamped zone',edge:'Spatter out through the flange edge',ovl:'Spatter out through the short part’s end',surf:'Surface spatter (表チリ) at the tip–sheet surface'},
+IF2:['Interface'],IF3:['1st×2nd (thin side)','2nd×3rd (thick side)'],PN2:['Upper','Lower'],PN3:['1st','2nd','3rd'],
+lblUp:'Upper cap tip (moves)',lblLo:'Lower cap tip (fixed)',lblUpS:'Upper tip',lblLoS:'Lower tip',edgeL:'Flange edge',endL:'Part end',zoom:'Zoom ×30 sheet interface',zoomF:'Zoom ×30 tip face to sheet',real:'real contact',
+faceOK:'Tip face R40',faceNG:'Dented / scratched tip face',wallL:'Part wall (joggle)',
+limit:(pl,r,v)=>`${pl} limit: OK ${r} ${v}`,edit:'Edit limits',edgeD:'Tip centre to edge',
+plant:'Plant',defPlant:'Default (standard)',
+dlgT:'OK/NG limits by plant',dlgD:'These limits split OK/NG and set where the simulation starts to spatter (everything else at default). Saved in this browser only; nobody else sees them.',
+add:'+ Add plant',del:'Delete this plant',delQ:'Press again to confirm',create:'Create',cancel:'Cancel',dF:'Topic',dR:'OK when',dV:'Limit',dD:'Default',
+dView:'Presentation view:',toDef:'Back to default',close:'Close',save:'Save and use',saved:'Saved',dfNote:'Default cannot be edited. Press “+ Add plant” to create a plant set.',nameNeed:'Enter a plant name',nameDup:'That name already exists',badV:'Value must be between',
+vPair:'OK | NG side by side',vSeq:'One at a time',auto:'▶ Auto play',autoOn:'■ Stop auto',loop:'⟲ Loop',
+ovh:n=>`${n} topics: cause, spatter type and key check`,ovd:'Tap a row to open that topic in the simulator',ovc1:'Topic',ovc2:'Mechanism',ovc3:'Spatter type',ovc4:'Key check',
+hh:'Why spatter-less matters',h1t:'Paint quality',h1d:'Spatter stuck to the body shows up as bumps under the paint after ED/paint and needs sanding.',h2t:'Spot strength',h2d:'Expelled metal is nugget that is lost: smaller or porous welds and a risk of separated spots.',h3t:'Vicious circle',h3d:'Spatter on jigs and locate pins gives the next part a gap, which makes even more spatter.',h4t:'Rework and safety',h4d:'More grinding, sharp fins that cut hands, sparks that burn skin or start fires.',
+note:'This is a simplified model to show trends and reasons (tip contact Ø6 mm, 2 layers 0.8 + 0.8 mm, 3 layers 0.7 + 1.2 + 1.4 mm). The spatter onset of the first four topics is matched to the selected plant’s OK/NG limits; other figures are examples, not the line’s weld schedule or standard.',
+exit:'✕ Exit',prev:'‹ Previous',next:'Next ›',replay:'↻ Replay',pvC:'Cause',pvE:'What happens',pvP:'Prevention / check',pvSum:'Summary: causes and checks',pvIntro:n=>`The ${n} topics that follow`}};
+
+const PR={I:{th:'กระแสเชื่อม',en:'Weld current',u:'kA',mn:6,mx:16,st:0.1,d:1},W:{th:'เวลาเชื่อม (Weld time)',en:'Weld time',u:'cyc',mn:4,mx:30,st:1,d:0},S:{th:'Squeeze time (รวมเวลา gun ปิด 8 cyc)',en:'Squeeze time (incl. 8 cyc gun closing)',u:'cyc',mn:4,mx:40,st:1,d:0},U:{th:'Upslope',en:'Upslope',u:'cyc',mn:0,mx:8,st:1,d:0},F:{th:'แรงกด Electrode',en:'Electrode force',u:'kN',mn:1,mx:4,st:0.05,d:2},
+ang:{th:'มุมเอียงของ Gun',en:'Gun tilt angle',u:'°',mn:0,mx:20,st:0.5,d:1},off:{th:'Tip บน–ล่างเยื้องศูนย์',en:'Upper–lower tip misalignment',u:'mm',mn:0,mx:3,st:0.05,d:2},gap:{th:'ช่องว่างระหว่างแผ่น (รอยต่อบน)',en:'Gap between sheets (top interface)',u:'mm',mn:0,mx:4,st:0.05,d:2},edge:{th:'ระยะจากจุด spot ถึงขอบ',en:'Spot centre to flange edge',u:'mm',mn:2.5,mx:12,st:0.1,d:1},
+cont:{th:'ระดับความสกปรกที่ผิว',en:'Surface contamination',u:'%',mn:0,mx:1,st:0.05,d:-1},ov:{th:'ระยะซ้อน: จุด spot ถึงปลายชิ้นที่สั้น',en:'Overlap: spot centre to short part’s end',u:'mm',mn:1.5,mx:12,st:0.1,d:1},ovp:{th:'ชิ้นที่ซ้อนไม่เต็ม (สั้น)',en:'Short part'},
+dmg:{th:'ความเสียหายหน้า tip (รอยบุบ / ขีดข่วน)',en:'Tip face damage (dents / scratches)',u:'%',mn:0,mx:1,st:0.05,d:-1},fw:{th:'ความกว้าง flange (ผนังถึงขอบ)',en:'Flange width (wall to edge)',u:'mm',mn:10,mx:22,st:0.5,d:1},tipd:{th:'ขนาด cap tip',en:'Cap tip size'}};
+const LIMDEF={off:0.5,ang:9,gap:2,edge:5};
+const LIMF={off:{lo:false,mn:0.05,mx:2.5,st:0.05},ang:{lo:false,mn:0.5,mx:18,st:0.5},gap:{lo:false,mn:0.05,mx:3.5,st:0.05},edge:{lo:true,mn:2.6,mx:11,st:0.1}};
+const LIMN={off:{th:'Tip Alignment',en:'Tip Alignment'},ang:{th:'Gun Angle',en:'Gun Angle'},gap:{th:'Gap ระหว่างแผ่น',en:'Gap between sheets'},edge:{th:'Spot ชิดขอบ',en:'Spot near edge'}};
+const WHYN={off:{th:' tip เยื้องศูนย์',en:'tip misalignment'},ang:{th:'มุมเอียง gun',en:'gun tilt'},gap:{th:' gap ระหว่างแผ่น',en:'sheet gap'},edge:{th:'ระยะศูนย์ tip ถึงขอบ',en:'edge distance'}};
+const MARK=(ok,s)=>`<svg class="mark" width="${s}" height="${s}" viewBox="0 0 40 40" role="img" aria-label="${ok?'OK':'NG'}"><rect x="1.75" y="1.75" width="36.5" height="36.5" rx="4" fill="#fff" stroke="#2b3238" stroke-width="3.5"/>${ok?'<circle cx="20" cy="20" r="11.2" fill="none" stroke="#159447" stroke-width="6"/>':'<path d="M11.5 11.5L28.5 28.5M28.5 11.5L11.5 28.5" stroke="#d41f17" stroke-width="6.5" stroke-linecap="round"/>'}</svg>`;
+const C=[
+{id:'tip',k:['off'],lim:'off',ok:()=>({off:0}),ng:(b,n,L)=>({off:rs(Math.min(3,Math.max(L.off*2,L.off+0.5)),0.05)}),
+th:{n:'Tip Alignment',t:'Tip Alignment: tip บน–ล่างเยื้องศูนย์ / หน้า tip ทับกันไม่เต็ม',ty:'ระหว่างแผ่น และที่ผิว',mk:'หน้า tip ทับกันไม่เต็ม พื้นที่กดจริงเหลือน้อย',chk:'Alignment tip บน–ล่าง, คุณภาพ Tip former',l:'หน้า tip บนกับล่างทับกันไม่เต็มหน้า พื้นที่ที่กดและนำกระแสจริงเหลือน้อย',
+m:['กระแสและแรงกดผ่านเฉพาะส่วนที่หน้า tip บนและล่างทับกัน ถ้าเยื้องกันพื้นที่นี้ลดลง','ผลจึงคล้ายแรงกดไม่พอบวกร้อนกระจุก Nugget เบี้ยวและล้นง่าย','เกินค่าแบ่งของ Plant (Default 0.5 mm) ถือเป็น NG และ simulation จะเริ่มเกิด Spatter ตรงจุดนั้น'],
+s:['รอยด้านบนกับด้านล่างไม่ตรงกัน','tip สึกข้างเดียว หน้า tip ไม่กลม','Spatter เพิ่มหลังเปลี่ยน tip หรือหลัง gun ชน'],
+c:['ตรวจ alignment tip บน–ล่างหลังเปลี่ยน tip และตอนเริ่มกะ (ประกบดูรอยบนกระดาษ)','ยืนยันคุณภาพ Tip former / Tip dresser ตาม procedure (รูปหน้า tip ขนาด ความเรียบ)','ขัน shank / adapter ให้แน่น ตรวจ arm ไม่บิด'],y:'เลื่อนให้เกินเส้นแดง (ค่าแบ่ง) แล้วดูแกน tip บนกับล่างแยกกัน'},
+en:{n:'Tip Alignment',t:'Tip alignment: upper–lower tips off-centre / faces only partly overlap',ty:'Between sheets and at the surface',mk:'Tip faces overlap only partly; little real pressed area',chk:'Upper–lower tip alignment, tip former quality',l:'The upper and lower faces do not fully overlap, so the area that is pressed and carries current shrinks.',
+m:['Current and force pass only where the upper and lower faces overlap; misalignment shrinks that area.','The effect is like low force plus concentrated heat: a lopsided nugget that overflows easily.','Beyond the plant limit (default 0.5 mm) it is NG, and the simulation starts to spatter right there.'],
+s:['Top and bottom marks do not line up','One-sided tip wear, out-of-round faces','More spatter after a tip change or a gun collision'],
+c:['Check tip alignment after tip changes and at shift start (carbon-paper imprint)','Confirm tip former / dresser quality per procedure (face shape, size, flatness)','Tighten shank / adapter; check the arm is not twisted'],y:'Push past the red line (the limit) and watch the upper and lower tip axes separate.'}},
+{id:'angle',k:['ang'],lim:'ang',ok:()=>({ang:0}),ng:(b,n,L)=>({ang:rs(Math.min(20,L.ang+4),0.5)}),
+th:{n:'Gun Angle',t:'Gun Angle: gun เอียง ไม่ตั้งฉากกับชิ้นงาน',ty:'ระหว่างแผ่น และที่ผิว',mk:'จุดสัมผัสบน–ล่างเยื้องกัน กระแสไหลเฉียง',chk:'มุม gun 90°, รูปรอย tip',l:'Cap tip หัวโดมจะกลิ้งไปแตะผิวงานที่จุดใหม่ จุดสัมผัสบนและล่างเลื่อนออกจากกัน ≈ (2R + t)·tanθ',
+m:['หัว tip เป็นทรงโดม เมื่อ gun เอียง หัวโดมยังสัมผัสผิวงาน แต่จุดสัมผัสย้ายไปอยู่ใต้จุดศูนย์กลางโดม ไม่ใช่ปลายแกน tip','tip บนและล่างอยู่คนละฝั่งของแผ่น จุดสัมผัสจึงเลื่อนออกจากกัน (2R + t)·tanθ พื้นที่ที่ทับกันจริงลดลง กระแสไหลเฉียง','เกินค่าแบ่งของ Plant (Default 9°) Nugget เบี้ยว ฝั่งที่แรงกดน้อยกั้นไม่อยู่ และขอบหน้า tip จิกผิวจนเกิด Surface spatter'],
+s:['รอย tip เป็นรูปไข่หรือเสี้ยว ลึกข้างเดียว รอยบนกับล่างไม่ตรงกัน','Spatter พุ่งออกทิศเดียว','tip สึกเอียง ต้องแต่งบ่อย'],
+c:['จับ gun ให้ตั้งฉากกับผิวงาน (90°) ทั้งแนวหน้า–หลังและซ้าย–ขวา','จุดที่เข้าถึงยาก: ทบทวนท่าทาง เลือก gun ที่เหมาะ หรือทำ guide ช่วย','ใช้รูปรอย tip บนชิ้นงานเป็นตัวชี้วัดมุม'],y:'เอียงทีละ 1–2° ข้ามเส้นแดง ดูเส้นแกน tip (แดง) กับแนวตั้ง และระยะเยื้องในบรรทัดสถานะ'},
+en:{n:'Gun Angle',t:'Gun angle: gun not perpendicular to the part',ty:'Between sheets and at the surface',mk:'Upper and lower contacts shift apart; current flows diagonally',chk:'Gun at 90°, shape of the tip mark',l:'A domed cap tip rolls onto a new contact point. Upper and lower contacts move apart by ≈ (2R + t)·tanθ.',
+m:['The tip is domed. When the gun tilts the dome still touches the sheet, but the contact moves to directly below the dome centre, not the tip axis.','Upper and lower tips are on opposite sides of the stack, so their contacts separate by (2R + t)·tanθ; real overlap shrinks and current flows diagonally.','Beyond the plant limit (default 9°) the nugget is lopsided, the lightly pressed side cannot hold the melt, and the tip edge digs in for surface spatter.'],
+s:['Oval or crescent tip marks, deeper on one side; top and bottom marks do not line up','Spatter flies one way','Tips wear at an angle and need frequent dressing'],
+c:['Hold the gun at 90° to the surface, front–back and left–right','Hard-to-reach spots: review posture, pick a suitable gun or add a guide','Use the tip mark shape as the angle indicator'],y:'Tilt 1–2° at a time past the red line; compare the red tip axis with the vertical and read the contact offset in the status line.'}},
+{id:'gap',k:['gap'],lim:'gap',ok:(b,n,L)=>({gap:Math.min(0.5,L.gap)}),ng:(b,n,L)=>({gap:rs(Math.min(4,Math.max(L.gap*1.5,L.gap+0.3)),0.05)}),
+th:{n:'Gap ระหว่างแผ่น',t:'มีช่องว่างระหว่างแผ่น (Gap / 隙間)',ty:'Initial และระหว่างแผ่น',mk:'แรงกดหมดไปกับการดัดแผ่นให้ชิด',chk:'Clamp, locate pin, part fitting, jig สะอาด',l:'แรงกดส่วนหนึ่งหมดไปกับการดัดแผ่นให้ชิดกัน เหลือกดรอยต่อจริงเพียงนิดเดียว',
+m:['ถ้าแผ่นไม่แนบ tip บนต้องดัดแผ่นลงมาก่อน แรงที่เหลือกดรอยต่อน้อยลง','แผ่นแตะกันเป็นจุดเล็ก ความหนาแน่นกระแสสูงตั้งแต่ต้น จึงเกิด Initial spatter','เกินค่าแบ่งของ Plant (Default 2 mm) วงแหวนกดยึดแคบ และแผ่นมีแรงสปริงดีดแยก Nugget จึงหลุดออก'],
+s:['เกิดซ้ำที่จุดเดิม ชิ้นงานเดิม','ชิ้นงานไม่ fit, clamp ปิดไม่สุด, locate pin สึก, มี burr หรือ spatter เก่าติด jig','เห็นแสงลอดระหว่างแผ่นใกล้จุด spot'],
+c:['ปิด clamp ครบและให้ชิ้นงานแนบก่อนเชื่อม','ทำความสะอาด jig และ locate pin จาก spatter (spatter บน jig → gap → spatter เพิ่ม)','ลำดับการเชื่อมเริ่มจากจุดใกล้ clamp ออกไป และตรวจ part fitting'],y:'ดูตอน tip บนลงมา: แผ่นบนถูกดัดลงตรงกลาง แต่รอบๆ ยังเผยอ ลองเลื่อนข้ามเส้นแดง'},
+en:{n:'Gap between sheets',t:'Gap between sheets (隙間)',ty:'Initial and between sheets',mk:'Force is spent bending the sheets together',chk:'Clamps, locate pins, part fitting, clean jigs',l:'Part of the force is spent bending the sheets together, leaving little to press the real interface.',
+m:['If the sheets are apart, the upper tip must first bend the sheet down; less force remains on the interface.','The sheets meet at a small point, so current density is high from the start: initial spatter.','Beyond the plant limit (default 2 mm) the clamped ring is narrow and the sheets spring apart, so the nugget escapes.'],
+s:['Repeats at the same spot and part','Poor part fit, clamps not fully closed, worn locate pins, burrs or old spatter on the jig','Light visible between the sheets near the spot'],
+c:['Close every clamp and seat the parts before welding','Clean spatter off jigs and locate pins (spatter on jig → gap → more spatter)','Weld outward from the clamps; check part fitting'],y:'Watch the upper tip come down: the top sheet bends at the centre but stays open around it. Slide past the red line.'}},
+{id:'edge',k:['edge'],lim:'edge',ok:(b,n,L)=>({edge:rs(Math.min(12,L.edge+3),0.1)}),ng:(b,n,L)=>({edge:rs(Math.max(2.5,L.edge*0.6),0.1)}),
+th:{n:'Spot ชิดขอบ',t:'ตำแหน่ง Spot ชิดขอบชิ้นงาน',ty:'ทะลุออกทางขอบ flange',mk:'ฝั่งขอบไม่มีเนื้อเหล็กล้อมกั้น',chk:'ระยะศูนย์ tip ถึงขอบ ≥ 5 mm, gauge',l:'ฝั่งขอบไม่มีเนื้อเหล็กล้อมรอบไว้ Nugget จึงแตกออกทางขอบ แม้ค่าเชื่อมปกติ',
+m:['วงแหวนกดยึดต้องมีเนื้อเหล็กล้อมรอบ Nugget ครบทุกด้าน','ถ้า spot ชิดขอบ ฝั่งขอบเหลือเนื้อเหล็กแคบ และหน้า tip บางส่วนเลยขอบออกไป','ต่ำกว่าค่าแบ่งของ Plant (Default 5 mm) โลหะหลอมทะลักออกทางขอบ flange'],
+s:['ขอบ flange บวม ละลาย หรือแหว่ง','Spatter พุ่งออกทางขอบ','รอย tip เลยขอบ flange'],
+c:['ระยะศูนย์ tip ถึงขอบ flange ≥ 5 mm','ใช้ marking, guide หรือ gauge ช่วยวางตำแหน่ง','จุดที่ flange สั้นหรือมีผนังใกล้: ใช้ tip Ø13 (ดูหัวข้อ Tip Ø16→13)'],y:'ลดระยะถึงขอบให้ต่ำกว่าเส้นแดง: Nugget ขนาดเดิม แต่ขอบชิ้นงานตัดขอบเขตกดยึดฝั่งขวาออก'},
+en:{n:'Spot near edge',t:'Spot too close to the part edge',ty:'Out through the flange edge',mk:'No surrounding steel on the edge side',chk:'Tip centre to edge ≥ 5 mm, gauge',l:'The edge side has no surrounding steel to contain the nugget, so it breaks out through the edge even with a normal schedule.',
+m:['The clamped ring needs steel all around the nugget.','Near the edge only a thin strip remains on that side, and part of the tip face hangs past the edge.','Below the plant limit (default 5 mm) the melt bursts out through the flange edge.'],
+s:['Swollen, melted or notched flange edge','Spatter shooting out of the edge','Tip mark running off the flange'],
+c:['Tip centre to flange edge ≥ 5 mm','Use marking, guides or gauges for positioning','Short flanges or nearby walls: use a Ø13 tip (see Tip Ø16→13)'],y:'Bring the edge distance under the red line: the nugget stays the same, but the edge cuts the clamped zone on the right.'}},
+{id:'shape',k:['dmg'],ok:()=>({dmg:0}),ng:()=>({dmg:0.6}),zoom:'face',
+th:{n:'Tip Shape',t:'Tip Shape: หน้า tip ต้องคงรูป R40 ไม่บุบ ไม่มีรอยขีดข่วน',ty:'Surface และ Initial spatter',mk:'หน้า tip บุบ/ขีดข่วน สัมผัสจริงเหลือแค่บางจุด',chk:'หน้า tip R40, เปลี่ยน tip ด้วยเครื่องมือ ห้ามตีด้วยค้อน',l:'หน้า tip ต้องคงรูปโค้ง R40 ที่เรียบ ถ้าหน้า tip บุบหรือขีดข่วน (เช่น ใช้ค้อนตีตรงปลาย tip ตอนเปลี่ยน tip) จุดที่สัมผัสแผ่นจริงจะเหลือแค่บางจุด',
+m:['หน้า tip R40 ที่เรียบกดแผ่นเป็นวงสม่ำเสมอ กระแสและแรงกดกระจายทั่วหน้า','รอยบุบหรือรอยขีดข่วนทำให้หน้า tip เป็นหลุมเป็นสัน แตะแผ่นแค่สันที่นูน กระแสไปกระจุกที่สันเหล่านั้น','ผิวนอกร้อนจัดจนกระเด็น (Surface spatter) และวงแหวนกดยึดแคบลง Nugget ล้นง่าย'],
+s:['ประกายไฟรอบหน้า tip ทันทีหลังเปลี่ยน tip ใหม่','รอยกดบนชิ้นงานไม่กลม มีรอยขีดหรือรอยหลุมตามรูปหน้า tip','tip ใหม่แต่ spatter มากกว่า tip เก่า'],
+c:['เปลี่ยน tip ด้วยเครื่องมือเปลี่ยน tip ห้ามตีปลาย tip ด้วยค้อนโดยตรง','ตรวจหน้า tip ใหม่ก่อนใช้: เรียบ ไม่มีรอยบุบ คงรูป R40','แต่ง tip ด้วย Tip former / Tip dresser ตามรอบเพื่อคืนรูปหน้า tip'],y:'เพิ่มความเสียหายหน้า tip แล้วดูเลนส์ซูมที่หน้า tip: จุดสัมผัสเหลือน้อยและร้อนแดงเมื่อกระแสเข้า'},
+en:{n:'Tip Shape',t:'Tip shape: keep the tip face at R40, no dents or scratches',ty:'Surface and initial spatter',mk:'Dented/scratched face touches only at a few points',chk:'R40 tip face; replace tips with the tool, never a hammer',l:'The tip face must keep a smooth R40 curve. A dented or scratched face (for example from hammering the tip end during replacement) touches the sheet at only a few points.',
+m:['A smooth R40 face presses an even ring; current and force spread over the face.','Dents and scratches leave pits and ridges; only the ridges touch the sheet and current crowds through them.','The outer surface overheats and splashes (surface spatter), and the clamped ring narrows so the nugget overflows easily.'],
+s:['Sparks around the tip face right after a tip change','Out-of-round tip marks with scratches or pits copying the face','A new tip spatters more than the old one'],
+c:['Change tips with the tip replacement tool; never hit the tip end with a hammer','Check a new tip face before use: smooth, no dents, R40','Dress with the tip former / dresser on schedule to restore the face'],y:'Raise tip face damage and watch the zoom on the tip face: few contact points remain and they glow when current arrives.'}},
+{id:'surf',k:['cont'],ok:()=>({}),ng:()=>({cont:0.6}),
+th:{n:'ผิวสกปรก',t:'ผิวสกปรก / มีสารคั่น',ty:'Surface spatter (表チリ) ที่ผิว tip',mk:'ความต้านทานผิวสูง ร้อนที่ผิวนอก',chk:'Sealer / น้ำมันไม่เลอะจุด spot, tip dress ตามรอบ',l:'คราบที่ผิวทำให้ความต้านทานผิวสูง ความร้อนไปเกิดที่ผิว tip–แผ่น แทนที่จะเกิดที่รอยต่อ',
+m:['น้ำมัน สนิม sealer หรือคราบ Zn บนหน้า tip เพิ่มความต้านทานที่ผิวสัมผัส electrode–แผ่น','ความร้อนเกิดที่ผิวนอกมากขึ้น ผิวหลอมและกระเด็นออกรอบหน้า tip','tip ติดชิ้นงาน หน้า tip เสื่อมเร็ว รอบต่อไปยิ่งแย่ลง'],
+s:['ประกายไฟออกรอบหน้า tip ด้านนอก ไม่ใช่ระหว่างแผ่น','ผิวรอย spot ไหม้ดำ มีรอยแตกหรือหลุมที่ผิว','tip ติดชิ้นงาน ต้องดึงออก'],
+c:['ควบคุมไม่ให้ sealer หรือน้ำมันเลอะบริเวณจุด spot','แต่ง tip ตามรอบให้หน้า tip สะอาด','ตรวจสภาพชิ้นงาน (สนิม คราบ) ก่อนเข้าสถานี'],y:'เพิ่มความสกปรก: ประกายไฟออกจากหน้า tip ด้านบน และแถบความร้อนผิวเกินเส้นแดง'},
+en:{n:'Dirty surface',t:'Contaminated surface / foreign layer',ty:'Surface spatter (表チリ) at the tip',mk:'High surface resistance, heat at the outer surface',chk:'No sealer/oil at spots; tip dressing on schedule',l:'Contamination raises surface resistance, so heat forms at the tip–sheet surface instead of the interface.',
+m:['Oil, rust, sealer or Zn pick-up on the tip face raise resistance at the electrode–sheet contact.','More heat forms at the outer surface, which melts and splashes around the tip face.','Tips stick to the part and wear faster, making the next welds worse.'],
+s:['Sparks around the outside of the tip face, not between sheets','Blackened spot surface with cracks or pits','Tips stick to the part and must be pulled off'],
+c:['Keep sealer and oil away from spot positions','Dress tips on schedule to keep faces clean','Check parts for rust and residue before the station'],y:'Raise contamination: sparks leave from the upper tip face and the surface-heat bar crosses the red line.'}},
+{id:'overlap',k:['ovp','ov'],ok:(b,n)=>({ov:11,ovp:n===2?0:1}),ng:(b,n)=>({ov:2.5,ovp:n===2?0:1}),
+th:{n:'ชิ้นงานซ้อนไม่เต็ม',t:'ชิ้นงานซ้อนกันไม่เต็ม (Part overlap ไม่พอ)',ty:'ออกทางปลายชิ้นที่สั้น และที่ผิว',mk:'หน้า tip ส่วนที่เลยปลายชิ้นไม่มีอะไรรองรับ',chk:'ตำแหน่งชิ้นงานใน jig, ขนาดชิ้นงาน, ตำแหน่ง spot',l:'ปลายของชิ้นงานชิ้นหนึ่งมาสิ้นสุดใต้หน้า tip ฝั่งที่ซ้อนครบรับแรงกดทั้งหมด ฝั่งที่ขาดชั้นกลายเป็นขั้นหรือช่องว่าง',
+m:['ส่วนของหน้า tip ที่อยู่เลยปลายชิ้นที่สั้นไม่มีอะไรรองรับ (เป็นขั้นบันไดหรือช่องว่าง) แรงกดและกระแสจึงลงเฉพาะฝั่งที่ซ้อนครบ','พื้นที่สัมผัสเล็กลงและเยื้องข้าง ร้อนกระจุกเหมือนแรงกดไม่พอ','รอยต่อที่ติดกับชิ้นที่สั้นสิ้นสุดที่ปลายชิ้น Nugget ที่โตถึงตรงนั้นจึงทะลักออก ใน 3 ชั้นถ้าชิ้นกลางสั้น แผ่นนอกเลยปลายชิ้นจะลอยเป็นช่องว่างเท่าความหนาชิ้นกลาง'],
+s:['Spatter ออกทางปลายชิ้นงานที่สั้น','รอย tip ครึ่งวงหรือเป็นขั้นบนผิว','มักเกิดจากชิ้นงานเลื่อนใน jig, ชิ้นงานขนาดผิด (ตัดสั้น), ตำแหน่ง spot ไม่ตรง'],
+c:['ตรวจตำแหน่งชิ้นงานใน jig (locate pin, clamp) ให้ระยะซ้อนตาม drawing','ยืนยันขนาดชิ้นงานและ flange จากผู้ผลิตชิ้นงาน','ใช้ gauge ตรวจตำแหน่ง spot เทียบกับปลายชิ้นงาน'],y:'เลือกชิ้นที่สั้น แล้วลดระยะซ้อน ดูหน้า tip ส่วนที่เลยปลายชิ้นไม่มีอะไรรองรับ'},
+en:{n:'Partial overlap',t:'Parts overlap only partly at the spot',ty:'Out through the short part’s end; surface',mk:'Tip face beyond the short part’s end is unsupported',chk:'Part position in jig, part size, spot position',l:'One part ends under the tip face. The fully stacked side takes all the force; the other side becomes a step or a void.',
+m:['The part of the tip face beyond the short part’s end has nothing under it (a step or a void), so force and current go only through the fully stacked side.','Contact shrinks and shifts sideways, concentrating heat like low force.','The interface touching the short part ends at its end; a nugget that reaches it bursts out. With 3 layers, if the middle part is short, the outer sheets float over a void as thick as the middle sheet.'],
+s:['Spatter out of the short part’s end','Half-moon or stepped tip marks','Usually parts shifted in the jig, wrong part size (short-cut), or mispositioned spots'],
+c:['Check part position in the jig (locate pins, clamps) for the drawing overlap','Confirm part and flange dimensions with the supplier','Gauge the spot position against the part end'],y:'Choose the short part, reduce the overlap, and watch the tip face beyond the end lose its support.'}},
+{id:'force',k:['F'],ok:()=>({}),ng:b=>({F:r2(b.F*0.56)}),zoom:'seam',
+th:{n:'แรงกดไม่พอ',t:'แรงกด Electrode ไม่พอ',ty:'Initial และระหว่างแผ่น',mk:'แผ่นแนบกันไม่สนิท พื้นที่สัมผัสเล็ก ขอบเขตกดยึดแคบ',chk:'Force gauge, แรงดันลม, regulator, cylinder รั่ว',l:'แรงกดน้อย ผิวแผ่นแนบกันไม่สนิท (ดูเลนส์ซูม) จุดสัมผัสจริงเหลือน้อย กระแสกระจุก ร้อนเร็ว แต่วงแหวนกดยึดกลับเล็กลง',
+m:['ผิวเหล็กไม่เรียบสนิท ต้องใช้แรงกดบีบผิวให้แนบกัน แรงน้อยจุดสัมผัสจริงจึงเหลือแค่บางจุด และแผ่นยังเผยอรอบจุด spot','กระแสเท่าเดิมไหลผ่านจุดสัมผัสที่เล็กลง ความหนาแน่นกระแสสูง ร้อนเร็วกว่าปกติ','วงแหวนกดยึด (Corona bond) เล็กลงด้วย จึงกั้นโลหะหลอมไม่อยู่ เสียทั้งสองทาง'],
+s:['Spatter มากขึ้นแม้ใช้ schedule เดิม','รอย tip ตื้นและเล็ก เห็นแผ่นเผยอรอบจุด','มักพบเมื่อแรงดันลมตก regulator เพี้ยน cylinder หรือซีลรั่ว gun ฝืด'],
+c:['วัดแรงกดด้วย Force gauge ตามรอบ และทุกครั้งหลังซ่อม gun','ตรวจแรงดันลมเข้า gun และ regulator ทุกกะ','ตรวจการรั่วของ cylinder และการเคลื่อนที่ของ arm'],y:'ดูเลนส์ซูมมุมขวา: แรงกดปกติผิวแนบเกือบทั้งหมด แรงกดต่ำเหลือจุดสัมผัสไม่กี่จุดที่ร้อนแดงเมื่อกระแสมา'},
+en:{n:'Low force',t:'Electrode force too low',ty:'Initial and between sheets',mk:'Sheets not fully seated, small contact, narrow clamped zone',chk:'Force gauge, air pressure, regulator, cylinder leaks',l:'With low force the sheet surfaces do not seat fully (see the zoom lens). Real contact is only a few points, so current crowds, heats fast, and the clamped ring shrinks.',
+m:['Steel surfaces are never perfectly flat; force is what squeezes them together. With low force only a few points really touch and the sheets stay slightly open around the spot.','The same current passes through less real contact, so current density and heating rise.','The corona bond ring is also smaller, so it cannot hold the melt: a loss on both sides.'],
+s:['More spatter on the same schedule','Shallow, small tip marks; sheets visibly open around the spot','Often from low air pressure, a drifting regulator, leaking cylinder or seals, a sticky gun'],
+c:['Measure force with a force gauge on schedule and after every gun repair','Check gun air pressure and regulator every shift','Check cylinder leaks and arm movement'],y:'Watch the zoom lens: at normal force the surfaces seat almost fully; at low force only a few contact points remain and they glow when current arrives.'}},
+{id:'init',k:['S','U'],ok:()=>({U:3}),ng:()=>({S:10}),zoom:'seam',
+th:{n:'Short squeeze time',t:'Short squeeze time: ปล่อยกระแสก่อนกดสนิท / ไม่มี Upslope',ty:'Initial spatter (初期チリ) ทันทีที่เริ่ม',mk:'กระแสเต็มเข้าตอนผิวยังแตะกันเป็นจุดเล็ก',chk:'Squeeze time, Upslope, วิธียิงของ operator',l:'Gun ต้องใช้เวลาปิดและเพิ่มแรงกด ถ้ากระแสเต็มเข้าก่อน จุดสัมผัสเล็กๆ จะหลอมและระเบิดออก',
+m:['Squeeze time ต้องครอบคลุมทั้งเวลาที่ gun ปิดลงมา (ในแบบจำลอง 8 cyc) และเวลาที่แรงกดไต่ขึ้นถึงค่าตั้ง','ถ้ากระแสมาก่อนแรงกดเต็ม ผิวยังแตะกันเป็นจุดเล็ก ความหนาแน่นกระแสสูงมาก หลอมทันทีโดยยังไม่มีวงแหวนกั้น','Upslope คือค่อยๆ เพิ่มกระแส ให้ผิวนิ่มและพื้นที่สัมผัสขยายก่อนกระแสเต็ม (แนวคิดของ New Timer สำหรับ Spatterless)'],
+s:['ประกายไฟออกทันทีที่กดสวิตช์ (cycle แรกๆ)','พบบ่อยกับ portable gun เมื่อยิงเร็ว หรือ gun ยังขยับตอนเริ่มเชื่อม','ผิวกลางรอยไหม้ มีหลุมเล็ก'],
+c:['ตั้ง Squeeze time ให้แรงกดถึงค่าตั้งก่อนปล่อยกระแส','ใช้ Upslope ตาม workflow การใช้ upslope ลด spatter','วาง gun ให้นิ่ง กดให้สนิทแล้วจึงยิง ไม่ขยับระหว่างเชื่อม'],y:'ดูกราฟ: แรงกด (ฟ้า) ยังไต่ไม่ถึงแต่กระแส (ส้ม) มาแล้ว ลองเพิ่ม Squeeze หรือใส่ Upslope 3 cyc'},
+en:{n:'Short squeeze time',t:'Short squeeze time: current before full force / no upslope',ty:'Initial spatter (初期チリ) right at the start',mk:'Full current while surfaces touch at small points',chk:'Squeeze time, upslope, operator firing habit',l:'The gun needs time to close and build force. If full current arrives first, the small contact points melt and burst.',
+m:['Squeeze time must cover both the gun closing stroke (8 cyc in this model) and the force rising to its set value.','If current comes before full force, surfaces touch only at small points; current density is extreme and they melt with no ring to contain them.','Upslope ramps current up so the surface softens and contact spreads before full current (the New Timer concept for spatter-less).'],
+s:['Sparks the instant the switch is pressed (first cycles)','Common with portable guns fired quickly or still moving at weld start','Burnt centre with small pits'],
+c:['Set squeeze time so force reaches its set value before current','Use upslope per the upslope spatter-reduction workflow','Hold the gun still, seat it, then fire; do not move during the weld'],y:'Look at the chart: force (blue) has not finished rising when current (orange) arrives. Add squeeze or 3 cyc of upslope.'}},
+{id:'heat',k:['I','W'],ok:()=>({}),ng:b=>({I:r1(b.I+3.5),W:b.W+4}),
+th:{n:'กระแส/เวลาเกิน',t:'กระแสหรือเวลาเชื่อมมากเกินไป',ty:'ระหว่างแผ่น (中チリ) ช่วงกลาง–ท้ายการเชื่อม',mk:'Nugget ใหญ่เกินขอบเขตกดยึด',chk:'Weld schedule ถูกต้อง, ไม่เพิ่มกระแสเผื่อ',l:'ความร้อน Q = I²·R·t ยิ่งกระแสสูงหรือเวลานาน Nugget ยิ่งโต จนล้นขอบเขตที่ tip กดยึดไว้',
+m:['ความร้อนเกิดมากที่สุดที่รอยต่อระหว่างแผ่น (ความต้านทานสูงสุด) จึงหลอมเป็น Nugget ตรงนั้นก่อน','รอบ Nugget มีวงแหวนเหล็กที่ยังไม่หลอมแต่ถูกกดแน่น (Corona bond) ทำหน้าที่เหมือนซีลกั้นโลหะหลอม','ถ้าความร้อนเกิน Nugget โตเกินวงแหวนนี้ โลหะหลอมที่ขยายตัวดันแผ่นแยกและพุ่งออกทางรอยต่อ'],
+s:['เสียงดังกลาง–ท้ายจังหวะเชื่อม ตามด้วยประกายไฟพุ่งออกด้านข้าง','มีครีบโลหะ (fin) ยื่นออกระหว่างแผ่น และเม็ด spatter ติดรอบจุด','รอย tip กดลึก แผ่นยุบมากผิดปกติ'],
+c:['ใช้ Weld schedule ตาม standard ของจุดนั้น (เลข schedule ตรงกับ gun และชิ้นงาน)','ห้ามเพิ่มกระแสเผื่อเพื่อให้ chisel ผ่าน ให้หาสาเหตุที่ Nugget เล็กก่อน (tip สึก แรงกด gap)','ตั้ง Stepper ให้เพิ่มกระแสตามการสึกของ tip อย่างพอดี'],y:'กด NG แล้วเล่น: Nugget สีส้มโตจนชนเส้นฟ้าแล้วพุ่งออก ลองลดกระแสทีละ 0.5 kA เพื่อหาจุดที่เริ่มเกิด'},
+en:{n:'Too much current/time',t:'Weld current or time too high',ty:'Between sheets (中チリ), mid to late weld',mk:'Nugget larger than the clamped zone',chk:'Correct weld schedule; no “extra” current',l:'Heat Q = I²·R·t. More current or time grows the nugget until it overflows the zone the tips clamp.',
+m:['Heat is highest at the sheet interface (highest resistance), so the nugget melts there first.','Around the nugget is a ring of unmelted, tightly pressed steel (corona bond) that seals the molten metal in.','With too much heat the nugget outgrows that ring; the expanding melt forces the sheets apart and escapes along the interface.'],
+s:['A bang mid to late in the weld, then sparks flying sideways','A metal fin between the sheets and spatter beads around the spot','Deep tip marks, excessive indentation'],
+c:['Use the standard weld schedule for that spot (schedule number matches gun and part)','Never add current “to pass the chisel”; first find why the nugget is small (tip wear, force, gap)','Set the stepper to raise current in line with tip wear'],y:'Press NG and play: the orange nugget grows into the blue line and bursts. Lower current in 0.5 kA steps to find the onset.'}},
+{id:'dia',k:['tipd','fw'],lim:'edge',ok:()=>({tipd:13,fw:14.5}),ng:()=>({tipd:16,fw:14.5}),
+th:{n:'Tip Ø16→13',t:'ใช้ tip Ø13 กับชิ้นงานที่มี joggle หรือ flange สั้น',ty:'ทะลุออกทางขอบ flange',mk:'tip Ø16 ชนผนังชิ้นงาน จุดเชื่อมถูกดันไปชิดขอบ',chk:'tip Ø13 ที่ door opening / flange สั้น, ศูนย์ tip ถึงขอบ ≥ 5 mm',l:'ชิ้นงานที่มีผนังตั้ง (joggle) ติดกับ flange สั้น ตัว tip Ø16 ชนผนังก่อน จุดเชื่อมจึงถูกดันออกไปชิดขอบ flange เปลี่ยนเป็น tip Ø13 ที่เพรียวกว่าจะวางจุดเชื่อมลึกเข้าไปได้ ให้ศูนย์ tip ห่างขอบ flange ≥ 5 mm',
+m:['ศูนย์ tip ต้องห่างผนังอย่างน้อยเท่ารัศมีตัว tip บวกระยะเผื่อรัศมีดัด (ในแบบจำลอง 2.5 mm)','tip Ø16 (รัศมี 8 mm) วางจุดเชื่อมชิดผนังได้น้อยกว่า tip Ø13 (รัศมี 6.5 mm) อยู่ 1.5 mm จุดเชื่อมจึงถูกดันไปทางขอบ','ถ้าระยะศูนย์ tip ถึงขอบต่ำกว่าค่าแบ่งของ Plant (Default 5 mm) ฝั่งขอบไม่มีเนื้อเหล็กล้อมกั้น Nugget ทะลักออกทางขอบ เหมือนหัวข้อ Spot ชิดขอบ'],
+s:['Spatter ที่ขอบ flange บริเวณ door opening หรือจุดที่มีผนังตั้งใกล้ๆ','ตำแหน่งจุดเชื่อมไม่คงที่ บางจุดชิดขอบ','ตัว tip มีรอยเสียดสีกับผนังชิ้นงาน'],
+c:['ใช้ tip Ø13 (slim) ที่ door opening และจุดที่ flange สั้น','ใช้เฉพาะกระบวนการที่มี Tip former และเครื่องมือที่รวมกับใบมีดหลักแล้ว','ตรวจระยะศูนย์ tip ถึงขอบ flange ≥ 5 mm ด้วย gauge'],y:'สลับ Ø16 กับ Ø13 แล้วดูระยะศูนย์ tip ถึงขอบ flange เทียบเส้นเกณฑ์'},
+en:{n:'Tip Ø16→13',t:'Use a Ø13 tip on joggles and short flanges',ty:'Out through the flange edge',mk:'A Ø16 tip hits the part wall, pushing the spot toward the edge',chk:'Ø13 tip at door openings / short flanges; tip centre to edge ≥ 5 mm',l:'Where a wall (joggle) rises next to a short flange, a Ø16 tip hits the wall first, so the weld point is pushed toward the flange edge. A slimmer Ø13 tip places the spot further in, keeping the tip centre ≥ 5 mm from the edge.',
+m:['The tip centre must stay at least one tip radius plus the bend clearance (2.5 mm in this model) from the wall.','A Ø16 tip (radius 8 mm) gets 1.5 mm less room than a Ø13 tip (radius 6.5 mm), so the spot moves toward the edge.','Below the plant edge limit (default 5 mm) there is no steel on the edge side to contain the nugget, and it bursts out of the edge, as in Spot near edge.'],
+s:['Spatter at the flange edge around door openings or near walls','Spot positions vary; some sit close to the edge','Rub marks from the part wall on the tip'],
+c:['Use slim Ø13 tips at door openings and short flanges','Only where a tip former and a tool integrated with the main blade have been introduced','Gauge tip centre to flange edge ≥ 5 mm'],y:'Switch between Ø16 and Ø13 and compare tip centre to edge distance with the limit line.'}},
+{id:'lab',k:['I','W','S','U','F','ang','off','gap','edge','cont','dmg'],ok:()=>({edge:10}),ng:(b,n,L)=>({I:r1(b.I+0.5),F:r2(b.F*0.88),ang:rs(L.ang*0.7,0.5),gap:rs(L.gap*0.6,0.05),off:rs(L.off*0.6,0.05),edge:10}),zoom:'seam',
+th:{n:'ทดลองรวม',t:'โหมดทดลอง: ปรับทุกตัวแปรพร้อมกัน',ty:'แล้วแต่สาเหตุที่ซ้อนกัน',mk:'',chk:'',l:'หน้างานจริงมักมีหลายสาเหตุซ้อนกัน แต่ละตัวยังอยู่ในเกณฑ์ OK แต่รวมกันแล้วข้ามเส้น',
+m:['ทุกหัวข้อกลับมาที่ 2 กลไก: Nugget ใหญ่กว่าขอบเขตกดยึด หรือร้อนกระจุกที่จุดสัมผัสเล็ก','ตัวแปรที่เพิ่มความร้อน: กระแส เวลา ความต้านทานผิว หน้า tip เสียหาย','ตัวแปรที่ลดขอบเขตกดยึด: แรงกด มุม gun tip เยื้อง gap ระยะขอบ'],
+s:['ปุ่ม NG ตั้งมุม gun, gap และ tip เยื้องไว้ที่ 60–70% ของค่าแบ่ง (ทุกตัวยัง OK) แล้วเพิ่มกระแส +0.5 kA และลดแรงกด 12%','แต่เมื่อรวมกันแล้วเกิด Spatter'],
+c:['แก้ทีละตัวแปรแล้วเล่นซ้ำ ดูว่าตัวไหนดึงกลับเข้าเขตปลอดภัยได้มากที่สุด','ใช้ผลนี้จัดลำดับจุดตรวจใน Check sheet หน้างาน'],y:'กด NG ก่อน แล้วแก้ทีละตัวแปร'},
+en:{n:'Lab',t:'Lab mode: adjust everything together',ty:'Depends on the combined causes',mk:'',chk:'',l:'On the line, causes stack up. Each one is still within its OK limit, but together they cross the line.',
+m:['Every topic comes back to two mechanisms: a nugget larger than the clamped zone, or heat concentrated at a small contact.','Variables that add heat: current, time, surface resistance, damaged tip faces.','Variables that shrink the clamped zone: force, gun angle, tip offset, gap, edge distance.'],
+s:['NG sets gun angle, gap and tip offset at 60–70% of their limits (each still OK), adds 0.5 kA and cuts force by 12%','Combined, they cause spatter'],
+c:['Fix one variable at a time and replay to see which brings it back into the safe zone fastest','Use the result to rank check points on the line check sheet'],y:'Press NG first, then fix one variable at a time.'}}];
+const TOPICS=C.filter(c=>c.id!=='lab');
+const numOf=c=>{const i=TOPICS.indexOf(c);return i<0?'':NUM[i]+' ';};
+
+/* ---------- state & storage ---------- */
+let lang='th',layers=2,cur=C[0],mode='ng',P=null,slow=false,pvView='pair';
+let plants={},plant=null;
+const STK={2:M.base(2).pl,3:M.base(3).pl};
+try{const s=JSON.parse(localStorage.getItem('sss')||'{}');if(s.lang)lang=s.lang;if(s.layers)layers=s.layers;if(s.pvView)pvView=s.pvView;}catch(e){}
+try{const s=JSON.parse(localStorage.getItem('sss-plants')||'{}');if(s.plants&&typeof s.plants==='object')plants=s.plants;if(s.active&&plants[s.active])plant=s.active;}catch(e){}
+const save=()=>{try{localStorage.setItem('sss',JSON.stringify({lang,layers,pvView}))}catch(e){}};
+const savePlants=()=>{try{localStorage.setItem('sss-plants',JSON.stringify({plants,active:plant}))}catch(e){}};
+const T=k=>S[lang][k],L=o=>o[lang];
+const LIM=()=>plant&&plants[plant]?plants[plant]:LIMDEF;
+const plantName=()=>plant||T('defPlant');
+const okOf=(f,v)=>LIMF[f].lo?v>=LIM()[f]-1e-9:v<=LIM()[f]+1e-9;
+const fmt=(k,v)=>PR[k].d<0?Math.round(v*100)+' %':(+v).toFixed(PR[k].d)+(PR[k].u==='°'?'°':' '+PR[k].u);
+const IFN=()=>layers===2?T('IF2'):T('IF3'),PNN=()=>layers===2?T('PN2'):T('PN3');
+const RM=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+/* ---------- calibration: spatter onset = plant limit ---------- */
+const ONC={};
+function onsets(n,pl){const key=n+'|'+JSON.stringify(pl);if(ONC[key])return ONC[key];
+ const b={...M.base(n),pl:pl.map(x=>({...x}))},sp=q=>M.sim({...b,...q}).ev.length>0;
+ const up=(f,lo,hi)=>{if(sp({[f]:lo}))return lo;if(!sp({[f]:hi}))return hi;for(let i=0;i<24;i++){const m=(lo+hi)/2;if(sp({[f]:m}))hi=m;else lo=m;}return lo;};
+ const dn=(f,lo,hi)=>{if(sp({[f]:hi}))return hi;if(!sp({[f]:lo}))return lo;for(let i=0;i<24;i++){const m=(lo+hi)/2;if(sp({[f]:m}))lo=m;else hi=m;}return hi;};
+ return ONC[key]={off:up('off',0,6),ang:up('ang',0,30),gap:up('gap',0,4),edge:dn('edge',1.2,20)};}
+function derive(p){if(p.fw!=null){p.rB=p.tipd/2;p.edge=r2(p.fw-p.rB-CLR);}return p;}
+function eff(p){const on=onsets(layers,p.pl),Lm=LIM(),q={...p};q.off=p.off*on.off/Lm.off;q.ang=p.ang*on.ang/Lm.ang;q.gap=p.gap*on.gap/Lm.gap;if(p.edge!=null)q.edge=p.edge*on.edge/Lm.edge;return q;}
+function presetP(c,m){const b=M.base(layers);const pr=(m==='ok'?c.ok:c.ng)(b,layers,LIM());return derive({...b,pl:STK[layers].map(x=>({...x})),...pr});}
+
+/* ---------- drawing assets (ids prefixed per stage) ---------- */
+function tipSym(id,nm,rB){const s=rB/8,w=rB-0.3;return `<g id="${id}${nm}"><path d="M${-w}-6.9L${w}-6.9L${w}-90L${-w}-90Z" fill="url(#${id}gt)" stroke="#3b2900" stroke-width="1.3" vector-effect="non-scaling-stroke"/><rect x="${-4.5*s}" y="-15.2" width="${9*s}" height="6" rx="1" fill="#6f5000" stroke="#3b2900" stroke-width="1.1" vector-effect="non-scaling-stroke"/><rect x="${-3.5*s}" y="-14.3" width="${7*s}" height="4.2" rx="0.7" fill="url(#${id}gt)"/><rect x="${-3.5*s}" y="-14.3" width="${7*s}" height="1.1" rx="0.5" fill="#3b2900" opacity=".35"/><line x1="${-w}" y1="-18.4" x2="${w}" y2="-18.4" stroke="#6b4c00" stroke-width="1.1" vector-effect="non-scaling-stroke"/><path d="M${-rB} 0A${rB} ${rB} 0 0 0 ${rB} 0L${rB}-6.2L${-rB}-6.2Z" fill="url(#${id}gt)" stroke="#3b2900" stroke-width="1.3" vector-effect="non-scaling-stroke"/><path d="M${-rB} 0A${rB} ${rB} 0 0 0 ${rB} 0L${rB}-6.2L${-rB}-6.2Z" fill="url(#${id}gsh)"/><rect x="${-rB-0.3}" y="-6.95" width="${2*rB+0.6}" height="0.85" rx="0.35" fill="#4a3500"/><rect x="${-5.3*s}" y="-89" width="1.3" height="88" rx="0.6" fill="#fff6cc" opacity=".4"/><path d="M${-6.6*s} ${1.8*s}A${7.2*s} ${7.2*s} 0 0 0 ${-2*s} ${6.9*s}" fill="none" stroke="#fff6cc" stroke-opacity=".35" stroke-width="1.4" vector-effect="non-scaling-stroke"/></g>`;}
+const DEFS=id=>`<defs><linearGradient id="${id}gt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6e4f00"/><stop offset=".16" stop-color="#c8930f"/><stop offset=".34" stop-color="#ffe066"/><stop offset=".45" stop-color="#fff1a8"/><stop offset=".6" stop-color="#f0c22c"/><stop offset=".85" stop-color="#b07e05"/><stop offset="1" stop-color="#5e4300"/></linearGradient>
+<radialGradient id="${id}gsh" cx=".42" cy=".35" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#3a2600" stop-opacity=".5"/></radialGradient>
+<linearGradient id="${id}gs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c2cbd3"/><stop offset=".5" stop-color="#9aa6b1"/><stop offset="1" stop-color="#6f7b86"/></linearGradient>
+<radialGradient id="${id}gn"><stop offset="0" stop-color="#fff6c8"/><stop offset=".45" stop-color="#ffb23d"/><stop offset="1" stop-color="#e2470f"/></radialGradient>
+<radialGradient id="${id}gh"><stop offset="0" stop-color="#ff7a1a" stop-opacity=".7"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></radialGradient>${tipSym(id,'t16',8)}${tipSym(id,'t13',6.5)}</defs>`;
+const sm=s=>{s=Math.max(0,Math.min(1,s));return s*s*(3-2*s);};
+
+/* ---------- Stage engine (main page + presentation share it) ---------- */
+const stages=new Set(),roMap=new WeakMap();let sid=0,raf=0,lastT=0;
+const ro=new ResizeObserver(es=>{for(const e of es){const S=roMap.get(e.target);if(S&&S.R){S.chart();S.frame();}}});
+function Stage(root,opt){
+ const S={root,sv:root.querySelector('.svs'),cv:root.querySelector('.cvs'),opt:opt||{},id:'s'+(++sid)+'_',P:null,R:null,D:null,c:cur,t:0,playing:false,parts:[],fired:new Set(),cb:null,G:{},CX:()=>0};
+ S.run=(p,play,cb)=>{S.P=p;S.c=cur;S.R=M.sim(eff(p));S.D=M.place(p);S.fired=new Set();S.parts=[];S.cb=cb||null;if(S.opt.onRun)S.opt.onRun(S);
+  if(play&&!RM()){S.t=0;S.playing=true;S.chart();S.frame();kick();}
+  else{S.t=S.R.tH;S.playing=false;S.chart();S.frame();if(S.cb){const f=S.cb;S.cb=null;setTimeout(f,0);}}
+  if(S.opt.onState)S.opt.onState(S);};
+ S.stop=()=>{if(!S.R)return;S.playing=false;S.cb=null;S.t=S.R.tH;S.parts=[];S.frame();if(S.opt.onState)S.opt.onState(S);};
+ S.frame=()=>frameOf(S);S.chart=()=>chartOf(S);
+ S.dispose=()=>{S.playing=false;S.cb=null;stages.delete(S);ro.unobserve(S.sv.parentNode);ro.unobserve(S.cv.parentNode);};
+ stages.add(S);roMap.set(S.sv.parentNode,S);roMap.set(S.cv.parentNode,S);ro.observe(S.sv.parentNode);ro.observe(S.cv.parentNode);
+ return S;}
+function kick(){if(!raf){lastT=performance.now();raf=requestAnimationFrame(loop);}}
+function loop(now){raf=0;const dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
+ for(const S of [...stages]){if(!S.playing)continue;S.t=Math.min(S.R.end,S.t+dt*(slow?6:15));S.frame();
+  S.R.ev.forEach((e,i)=>{if(!S.fired.has(i)&&S.t>=e.t){S.fired.add(i);spawn(S,e);}});stepParts(S,dt);
+  if(S.t>=S.R.end&&!S.parts.length){S.playing=false;S.frame();if(S.opt.onState)S.opt.onState(S);if(S.cb){const f=S.cb;S.cb=null;f();}}}
+ if([...stages].some(s=>s.playing))raf=requestAnimationFrame(loop);}
+function stageHTML(legend){return `<div class="fig st"><svg class="svs" role="img"></svg></div>${legend?'':''}<div class="fig ch"><svg class="cvs" role="img"></svg></div>`;}
+
+function frameOf(Sg){
+ const sv=Sg.sv,W=sv.clientWidth,H=sv.clientHeight,R=Sg.R;if(!W||H<80||!R)return;
+ const id=Sg.id,c=Sg.c,o=R.out[Math.min(R.out.length-1,Math.max(0,Math.round(Sg.t/0.25)))],p=Sg.P,D=Sg.D,g=R.g,n=g.n,Tt=g.T,narrow=W<560,ex=Math.max(2.2,4/Tt),Tv=Tt*ex,rB=p.rB||8,tsym=rB<7.5?'t13':'t16';
+ const k=Math.min(W/30,(H-24)/(34+Tv)),kv=k*ex,cx=W*0.5,cy=H*0.54,y0=cy-Tv*k/2,yB=y0+Tv*k,X=x=>cx+x*k;
+ const thv=Math.atan2(D.dC-p.off,2*rB+Tv),thd=thv*180/Math.PI,lift=o.lift,lv=lift*Math.cos(thv);
+ const Cl={x:X(0),y:yB+rB*k},Cu={x:X(D.dC)+lift*Math.sin(thv)*k,y:Cl.y-(2*rB+Tv)*k-lift*Math.cos(thv)*k};
+ const xu=D.dC,xn=D.xn,contact=o.t>=M.TC&&lift<1e-6,welded=o.rn>0,dia=p.fw!=null;
+ const seam0=dia?0:0.4*Math.max(0,0.9-o.cr)/0.9,Gp=p.gap+seam0,Pp=(Gp<=0||welded)?1:Math.max(0,Math.min(1,1-lv/(Gp*ex))),rcv=contact?o.rc:M.RT;
+ const raise=x=>Gp*(1-Pp*(1-sm((Math.abs(x-xu)-rcv)/5)));
+ const endOf=i=>{let e=p.edge==null?Infinity:p.edge;if(p.ov!=null&&i===p.ovp)e=Math.min(e,p.ov);return e;};
+ const droop=(i,x)=>(n===3&&p.ov!=null&&p.ovp===1&&i===0&&x>p.ov)?0.55*p.pl[1].t*sm((x-p.ov)/6):0;
+ const dyOf=(i,xm)=>i===0?(-raise(xm)+droop(i,xm))*kv:0;
+ const xw=-(rB+CLR);
+ let cum=0,shapes=[],pinfo=[];
+ for(let i=0;i<n;i++){const t=p.pl[i].t,e=endOf(i),xe=isFinite(e)?X(e):W+4,ya=y0+cum*kv,yb=ya+t*kv;
+  if(dia&&i===0){const Xw=X(xw),ri=2*k,tw=t*kv;shapes.push(`<path d="M${Xw} -4L${Xw} ${ya-ri}A${ri} ${ri} 0 0 0 ${Xw+ri} ${ya}L${xe} ${ya}L${xe} ${yb}L${Xw+ri} ${yb}A${ri+tw} ${ri+tw} 0 0 1 ${Xw-tw} ${ya-ri}L${Xw-tw} -4Z"/>`);}
+  else{let top='',bot='';const pts=[];for(let px=-4;px<xe;px+=3)pts.push(px);pts.push(xe);
+   for(const px of pts){const dy=dyOf(i,(px-cx)/k);top+=`${px.toFixed(1)},${(ya+dy).toFixed(1)} `;bot=`${px.toFixed(1)},${(yb+dy).toFixed(1)} `+bot;}
+   shapes.push(`<polygon points="${top}${bot}"/>`);}
+  pinfo.push({ya,yb,xe,e});cum+=t;}
+ const heat=o.I/16,zy=z=>y0+z*kv;
+ let h=DEFS(id)+`<defs><clipPath id="${id}cst">${shapes.join('')}</clipPath></defs>`;
+ h+=`<g fill="url(#${id}gs)" stroke="#2b3238" stroke-width="1">${shapes.join('')}</g>`;
+ const Lb=(x,y,t,a,col)=>`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" fill="${col||'#dfe6ec'}" font-size="13" text-anchor="${a||'start'}" paint-order="stroke" stroke="#12161b" stroke-width="4">${t}</text>`;
+ const tw=t=>t.length*7.2;
+ if(!narrow){pinfo.forEach((pi,i)=>{if((pi.yb-pi.ya)<15)return;const pl=p.pl[i];const lbl=`${PNN()[i]} · ${+pl.t.toFixed(2)} mm · ${SCL[pl.s]}${i===0&&pl.ga?' GA':''}`;const lx=dia&&i===0?X(xw)+2*k+8:12;if(dia&&i===0&&lx+tw(lbl)>X(-rB)-4)return;const dy=dyOf(i,(14-cx)/k);h+=`<text x="${lx.toFixed(1)}" y="${((pi.ya+pi.yb)/2+dy+4.5).toFixed(1)}" fill="#1b2128" font-size="13" font-weight="600">${lbl}</text>`;});}
+ if(dia){const Xw=X(xw)-p.pl[0].t*kv;h+=Lb(Math.max(8,Xw-8),Math.max(30,y0-9*k),T('wallL'),'end');}
+ const done=new Set();pinfo.forEach((pi,i)=>{if(!isFinite(pi.e)||pi.xe>W)return;const isEdge=p.edge!=null&&Math.abs(pi.e-p.edge)<1e-6,key=isEdge?'edge':'p'+i;if(done.has(key))return;done.add(key);
+  let lb=isEdge?`${T('edgeL')} · ${pi.e.toFixed(1)} mm`:`${T('endL')} ${PNN()[i]} · ${pi.e.toFixed(1)} mm`,col;
+  if(isEdge&&(c.lim==='edge')){const okk=okOf('edge',pi.e);col=okk?'#7fe0a8':'#ff8a7e';lb+=` (${okk?'OK':'NG'} ≥ ${LIM().edge})`;}
+  const lx0=Math.max(pi.xe+8,X(5.4)),fits=lx0+tw(lb)<W-6;h+=Lb(fits?lx0:W-8,yB+20,lb,fits?'start':'end',col);
+  h+=`<line x1="${pi.xe}" y1="${(isEdge?y0:pi.ya+dyOf(i,pi.e))-6}" x2="${pi.xe}" y2="${yB+8}" stroke="#dfe6ec" stroke-opacity=".7" stroke-dasharray="3 3"/>`;});
+ if(p.cont>0){let s=7;const rnd=()=>(s=s*16807%2147483647)/2147483647,N=Math.round(p.cont*40);for(let i=0;i<N;i++){const xm=(rnd()-.5)*16,top=rnd()<.6;h+=`<ellipse cx="${X(xm).toFixed(1)}" cy="${(top?y0-raise(xm)*kv-1.2:zy(g.zi[0])).toFixed(1)}" rx="${(2+rnd()*4).toFixed(1)}" ry="1.6" fill="#6b4a2b"/>`;}}
+ const ny=zy(g.zc);
+ if(o.rn>0)h+=`<g clip-path="url(#${id}cst)"><ellipse cx="${X(xn)}" cy="${ny}" rx="${(o.rn*1.3+0.4)*k}" ry="${Math.min(Tt/2,o.hn*1.3+0.25)*kv}" fill="url(#${id}gh)" opacity="${(0.35+heat).toFixed(2)}"/><ellipse cx="${X(xn)}" cy="${ny}" rx="${o.rn*k}" ry="${o.hn*kv}" fill="url(#${id}gn)"/></g>`;
+ if(o.I>0)h+=`<g clip-path="url(#${id}cst)"><ellipse cx="${X(xn)}" cy="${ny}" rx="${o.rc*k}" ry="${Tv*k*0.32}" fill="#ffd25a" opacity="${(heat*0.45).toFixed(2)}"/></g>`;
+ if(o.t>=M.TC){g.zi.forEach((z,i)=>{const yi=zy(z),d=o.d[i];
+  if(n===3&&d>0){h+=`<line x1="${X(xn-d/2)}" y1="${yi}" x2="${X(xn+d/2)}" y2="${yi}" stroke="#fff" stroke-width="2"/>`;if(!narrow)h+=Lb(X(xn-Math.max(o.rn,o.rb[i]))-8,yi+4.5,'Ø'+d.toFixed(1),'end');}
+  for(const sg of [-1,1]){const xx=X(xn+sg*o.rb[i]);h+=`<line x1="${xx}" y1="${yi-0.3*kv}" x2="${xx}" y2="${yi+0.3*kv}" stroke="#5aa9e6" stroke-width="3" stroke-dasharray="4 3"/>`;}});}
+ const showAx=p.ang>0||p.off>0;
+ if(showAx)h+=`<line x1="${Cl.x}" y1="${Cl.y+22*k}" x2="${Cl.x}" y2="${Cu.y-22*k}" stroke="#fff" stroke-opacity=".4" stroke-dasharray="6 5"/>`;
+ const dents=(C0,flip)=>{if(!(p.dmg>0))return '';let s=11,out='';const rnd=()=>(s=s*16807%2147483647)/2147483647,N=Math.round(p.dmg*10);
+  for(let i=0;i<N;i++){const f=(rnd()-.5)*1.1,w=0.05+rnd()*0.05,d=0.35+rnd()*0.5,a=(f-w),b=(f+w);const P1=[rB*Math.sin(a),rB*Math.cos(a)],P2=[rB*Math.sin(b),rB*Math.cos(b)],P3=[(rB-d)*Math.sin(f),(rB-d)*Math.cos(f)];
+   out+=`<polygon points="${P1} ${P3} ${P2}" fill="#2a1c00" opacity=".85"/>`;}
+  for(let i=0;i<Math.round(p.dmg*5);i++){const f=(rnd()-.5)*0.9,l=0.4+rnd()*0.4;out+=`<line x1="${rB*Math.sin(f)-l}" y1="${rB*Math.cos(f)-0.4-rnd()*0.8}" x2="${rB*Math.sin(f)+l}" y2="${rB*Math.cos(f)-0.6-rnd()*0.8}" stroke="#3a2600" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;}
+  return `<g transform="translate(${C0.x.toFixed(2)} ${C0.y.toFixed(2)}) rotate(${thd.toFixed(3)}) scale(${k} ${flip?-k:k})">${out}</g>`;};
+ h+=`<g transform="translate(${Cu.x.toFixed(2)} ${Cu.y.toFixed(2)}) rotate(${thd.toFixed(3)}) scale(${k})"><use href="#${id}${tsym}"/></g>`+dents(Cu,false);
+ h+=`<g transform="translate(${Cl.x.toFixed(2)} ${Cl.y.toFixed(2)}) rotate(${thd.toFixed(3)}) scale(${k} ${-k})"><use href="#${id}${tsym}"/></g>`+dents(Cl,true);
+ if(dia)h+=`<text x="${Cu.x}" y="${(Cu.y-2.4*k).toFixed(1)}" fill="#2a1c00" font-size="${Math.max(13,Math.min(22,k*1.6)).toFixed(0)}" font-weight="700" text-anchor="middle">Ø${p.tipd}</text>`;
+ if(o.I>0)h+=`<ellipse cx="${X(xu)}" cy="${y0}" rx="${M.RT*k}" ry="3" fill="#ffd25a" opacity="${(heat*(0.3+p.cont+p.dmg)).toFixed(2)}"/>`;
+ if(showAx){const sx=Math.sin(thv),cs=Math.cos(thv),Lx=24*k;
+  h+=`<line x1="${Cu.x}" y1="${Cu.y}" x2="${Cu.x+sx*Lx}" y2="${Cu.y-cs*Lx}" stroke="#ff5a4a" stroke-width="2"/><line x1="${Cl.x}" y1="${Cl.y}" x2="${Cl.x-sx*Lx}" y2="${Cl.y+cs*Lx}" stroke="#ff5a4a" stroke-width="2"/>`;
+  h+=`<circle cx="${X(xu)}" cy="${y0}" r="3.5" fill="#ff5a4a"/><circle cx="${X(0)}" cy="${yB}" r="3.5" fill="#ff5a4a"/>`;
+  if(p.ang>0){const ar=9.5*k,a0=-Math.PI/2,a1=a0+thv;h+=`<path d="M${Cu.x+Math.cos(a0)*ar} ${Cu.y+Math.sin(a0)*ar}A${ar} ${ar} 0 0 1 ${Cu.x+Math.cos(a1)*ar} ${Cu.y+Math.sin(a1)*ar}" fill="none" stroke="#ff5a4a" stroke-width="2.5"/>`+`<text x="${(Cu.x+(rB+1.4)*k).toFixed(1)}" y="${(Math.max(16,Cu.y-11*k)).toFixed(1)}" fill="#ffb0a8" font-size="15" font-weight="700" paint-order="stroke" stroke="#12161b" stroke-width="4">θ = ${p.ang}°</text>`;}}
+ if(c.id==='shape'){const fl=p.dmg>0.25,lbl=fl?T('faceNG'):T('faceOK');const lx=X(xu)-(rB+0.8)*k,ly=y0-raise(-rB)*kv-1.6*k;if(lx-tw(lbl)>4)h+=`<line x1="${lx+4}" y1="${ly-4}" x2="${X(xu)-2.2*k}" y2="${y0-0.5*k}" stroke="${fl?'#ff8a7e':'#ffe27a'}" stroke-width="1.4"/>`+Lb(lx,ly,lbl,'end',fl?'#ff8a7e':'#ffe27a');}
+ const lxe=Math.min(Cl.x,Cu.x)-(rB+1)*k,lab=(full,short,y)=>{const t=tw(full)<lxe-8?full:tw(short)<lxe-8?short:'';return t?Lb(lxe,y,t,'end'):'';};
+ if(!dia)h+=lab(T('lblUp'),T('lblUpS'),Math.max(18,Cu.y-14*k));h+=lab(T('lblLo'),T('lblLoS'),Math.min(H-10,Cl.y+14*k));
+ const zoomK=c.zoom,LR=narrow?Math.min(42,W*0.12):Math.min(76,W*0.1),lb={x:W-2*LR-16,y:20,b:48+2*LR};
+ if(o.rn>0){const nl=narrow?'Nugget':T('lgN'),tx=Math.min(cx+(rB+1.5)*k,W-tw(nl)-8),ty=y0-raise(rB+1.5)*kv-12;const hit=zoomK&&tx+tw(nl)>lb.x&&ty>lb.y&&ty-14<lb.b;
+  if(!hit&&tx>X(xn+o.rn)+10)h+=`<polyline points="${X(xn+o.rn)},${ny} ${tx-6},${ny} ${tx-6},${ty-4}" fill="none" stroke="#ffb23d" stroke-width="1.5"/>`+Lb(tx,ty,nl);}
+ if(zoomK){const face=zoomK==='face',tx=face?X(xu+M.RT*0.6):X(xn+o.rc*0.85),ty=face?y0-1:zy(g.zi[0])-raise(xn+o.rc*0.85)*kv*0.5;h+=lens(id,o,p,W,LR,tx,ty,narrow,face);}
+ Sg.G={k,kv,cx,X,y0,yB,xn,zi:g.zi,zy,o,xu,edgeX:p.edge!=null?X(p.edge):null};
+ if(!Sg.playing&&R.ev.length)h+=spray(Sg);
+ h+=`<g class="pg"></g>`;
+ sv.innerHTML=h;
+ const ph=Sg.cv.querySelector('.ph');if(ph){const x=Sg.CX(Sg.t);ph.setAttribute('x1',x);ph.setAttribute('x2',x);}
+ if(Sg.opt.onFrame)Sg.opt.onFrame(Sg,o);
+}
+function lens(id,o,p,W,Rr,tx,ty,narrow,face){
+ const icx=W-Rr-16,icy=Rr+48,A=Rr*0.2,cr=face?(o.t<M.TC?0:Math.max(o.cr,0.85)):o.cr,s=A*(1.6*(1-cr)-0.5*cr),Ae=A*(1-0.7*cr)*(face?0.6:1),hot=o.I>0,dmg=face?(p.dmg||0):0;
+ let up=`${icx-Rr},${icy-Rr} `,lo='',cont=0,N=0,segs='';
+ for(let x=-Rr;x<=Rr;x+=2){const u=x/Rr*14,nu=Math.sin(u*1.3+1.3)*0.6+Math.sin(u*3.1+0.2)*0.4,nl=Math.sin(u*1.1+4.1)*0.55+Math.sin(u*3.7+2.2)*0.45;
+  const dent=dmg*A*3.2*Math.pow(Math.max(0,Math.sin(u*0.9+0.4)),3)+dmg*A*1.6*Math.pow(Math.max(0,Math.sin(u*2.3+2.1)),6);
+  let yu=icy-s+Ae*nu-dent,yl=icy+Ae*nl;if(yu>=yl){const m=(yu+yl)/2;yu=m;yl=m;cont++;segs+=`<line x1="${icx+x-1}" y1="${m}" x2="${icx+x+1}" y2="${m}"/>`;}N++;
+  up+=`${(icx+x).toFixed(1)},${yu.toFixed(1)} `;lo=`${(icx+x).toFixed(1)},${yl.toFixed(1)} `+lo;}
+ up+=`${icx+Rr},${icy-Rr}`;const loP=`${icx+Rr},${icy+Rr} `+lo+` ${icx-Rr},${icy+Rr}`;
+ const pct=Math.round(cont/N*100);
+ let h=`<defs><clipPath id="${id}clz"><circle cx="${icx}" cy="${icy}" r="${Rr}"/></clipPath></defs>`;
+ h+=`<line x1="${tx}" y1="${ty}" x2="${icx-Rr*0.72}" y2="${icy+Rr*0.72}" stroke="#fff" stroke-opacity=".55" stroke-width="1.2"/><circle cx="${tx}" cy="${ty}" r="4" fill="none" stroke="#fff" stroke-opacity=".75"/>`;
+ h+=`<g clip-path="url(#${id}clz)"><rect x="${icx-Rr}" y="${icy-Rr}" width="${2*Rr}" height="${2*Rr}" fill="#07090b"/><polygon points="${up}" fill="url(#${id}${face?'gt':'gs'})"/><polygon points="${loP}" fill="url(#${id}gs)"/><g stroke="${hot?'#ffcf4a':'#e9eef2'}" stroke-width="${hot?3.5:2.5}" stroke-linecap="round">${segs}</g></g>`;
+ h+=`<circle cx="${icx}" cy="${icy}" r="${Rr}" fill="none" stroke="#e8b923" stroke-width="2.5"/>`;
+ h+=`<text x="${W-12}" y="${icy-Rr-10}" fill="#dfe6ec" font-size="13" font-weight="600" text-anchor="end" paint-order="stroke" stroke="#12161b" stroke-width="4">${T('real')} ≈ ${pct}%</text>`;
+ if(!narrow)h+=`<text x="${W-12}" y="${icy-Rr-27}" fill="#b9c4cd" font-size="13" text-anchor="end" paint-order="stroke" stroke="#12161b" stroke-width="4">${face?T('zoomF'):T('zoom')}</text>`;
+ return h;}
+function origin(Sg,e){const g=Sg.G,R=Sg.R;
+ if(e.k==='surf')return {x:g.X(g.xu)+(g.o.rc*0.9)*g.k,y:g.y0,dir:1,up:1};
+ const i=Math.max(0,e.i),yi=g.zy(g.zi[i]),dir=Sg.D.dC<-0.05?-1:1;
+ if(e.k==='edge'&&g.edgeX!=null)return {x:g.edgeX,y:yi,dir:1,up:0};
+ return {x:g.X(g.xn+dir*g.o.rb[i]),y:yi,dir,up:0};}
+function spray(Sg){let s='',sd=3;const rnd=()=>(sd=sd*16807%2147483647)/2147483647;
+ for(const e of Sg.R.ev.slice(0,4)){const o=origin(Sg,e);for(let i=0;i<9;i++){const d=(0.5+i*0.75)*Sg.G.k*(0.8+rnd()*.5),x=o.x+o.dir*d,y=o.y-(o.up?d*0.9:d*0.25)+((i*i)*0.06*Sg.G.k);s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(4-i*0.28).toFixed(1)}" fill="${i<3?'#fff0b0':'#ffb23d'}" stroke="#ff7a1a" stroke-width="1"/>`;}}return s;}
+function spawn(Sg,e){const o=origin(Sg,e),n=e.k==='surf'?18:30;
+ for(let i=0;i<n;i++){let vx,vy;if(o.up){vx=o.dir*(60+Math.random()*320);vy=-(220+Math.random()*420);}else{vx=o.dir*(220+Math.random()*560);vy=-(Math.random()*260)+60;if(Sg.P.gap>0.5&&i%2)vx=-vx;}Sg.parts.push({x:o.x,y:o.y,vx,vy,l:0.9+Math.random()*0.6,a:0});}
+ Sg.parts.push({x:o.x,y:o.y,flash:1,a:0,l:0.25});}
+function stepParts(Sg,dt){const g=Sg.sv.querySelector('.pg');if(!g)return;let s='';Sg.parts=Sg.parts.filter(q=>(q.a+=dt)<q.l);
+ for(const q of Sg.parts){if(q.flash){s+=`<circle cx="${q.x}" cy="${q.y}" r="${Sg.G.k*(0.5+q.a*3)}" fill="#fff3c4" opacity="${((1-q.a/q.l)*0.7).toFixed(2)}"/>`;continue;}
+  const px=q.x,py=q.y;q.vy+=900*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;const f=1-q.a/q.l;
+  s+=`<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${q.x.toFixed(1)}" y2="${q.y.toFixed(1)}" stroke="${f>.5?'#fff0b0':'#ff9a2e'}" stroke-width="2.4" stroke-linecap="round" opacity="${f.toFixed(2)}"/>`;}
+ g.innerHTML=s;}
+function phases(R){const p=R.p,TC=M.TC,a=[];a.push(['close',0,Math.min(TC,p.S)]);if(p.S>TC)a.push(['sq',TC,p.S]);
+ if(p.U>0)a.push(['up',p.S,p.S+p.U]);a.push(['weld',p.S+p.U,p.S+p.U+p.W]);a.push(['hold',p.S+p.U+p.W,R.tH]);a.push(['open',R.tH,R.end]);return a;}
+function chartOf(Sg){const cv=Sg.cv,W=cv.clientWidth,H=cv.clientHeight,R=Sg.R;if(!W||H<60||!R)return;const m={l:40,r:40,t:H<130?20:26,b:H<130?20:26},iw=W-m.l-m.r,ih=H-m.t-m.b;
+ const CX=t=>m.l+t/R.end*iw;Sg.CX=CX;const yI=i=>m.t+ih-i/16*ih,yF=f=>m.t+ih-f/4*ih;let h='';const small=H<130;
+ phases(R).forEach(([nm,a,b],i)=>{if(b<=a)return;const x=CX(a),w=CX(b)-x,lb=T('ph')[nm];h+=`<rect x="${x}" y="${m.t}" width="${w}" height="${ih}" fill="${i%2?'#ffffff0d':'#ffffff05'}"/>`;if(w>lb.length*7.6)h+=`<text x="${x+w/2}" y="${m.t-6}" fill="#b9c4cd" font-size="13" text-anchor="middle">${lb}</text>`;});
+ for(const v of (small?[0,10]:[0,5,10,15]))h+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yI(v)}" y2="${yI(v)}" stroke="#ffffff14"/><text x="${m.l-6}" y="${yI(v)+4}" fill="#ff9a4a" font-size="13" text-anchor="end">${v}</text>`;
+ for(const v of (small?[0,2,4]:[0,1,2,3,4]))h+=`<text x="${W-m.r+6}" y="${yF(v)+4}" fill="#7cc0f0" font-size="13">${v}</text>`;
+ const step=W<520?20:10;for(let t=0;t<=R.end-4;t+=step)h+=`<text x="${CX(t)}" y="${H-5}" fill="#9aa6b1" font-size="13" text-anchor="middle">${t}</text>`;
+ h+=`<text x="${W-m.r}" y="${H-5}" fill="#9aa6b1" font-size="13" text-anchor="end">cyc</text>`;
+ let a=`M${CX(0)},${yI(0)}`,f='';R.out.forEach((o,i)=>{a+=`L${CX(o.t).toFixed(1)},${yI(o.I).toFixed(1)}`;f+=(i?'L':'M')+CX(o.t).toFixed(1)+','+yF(o.f).toFixed(1);});a+=`L${CX(R.end)},${yI(0)}Z`;
+ h+=`<path d="${a}" fill="#ff8a1f" fill-opacity=".55" stroke="#ff8a1f" stroke-width="2"/><path d="${f}" fill="none" stroke="#5aa9e6" stroke-width="2.5"/>`;
+ R.ev.forEach((e,i)=>{const x=CX(e.t);h+=`<line x1="${x}" x2="${x}" y1="${m.t}" y2="${m.t+ih}" stroke="#ff5a4a" stroke-width="2"/>`;if(!i)h+=`<text x="${x+5}" y="${m.t+14}" fill="#ff8a7e" font-size="13" paint-order="stroke" stroke="#12161b" stroke-width="4">Spatter</text>`;});
+ h+=`<line class="ph" x1="${CX(Sg.t)}" x2="${CX(Sg.t)}" y1="${m.t-4}" y2="${m.t+ih}" stroke="#fff" stroke-width="1.5"/>`;cv.innerHTML=h;}
+
+/* ---------- verdict ---------- */
+function whyNG(c,p){if(!c||!c.lim||!p)return '';const k=c.lim,v=p[k];if(v==null||okOf(k,v))return '';const Lm=LIM()[k];
+ if(c.id==='dia')return T('whyDia')(p.tipd,fmt('edge',v),fmt('edge',Lm));
+ return (LIMF[k].lo?T('whyLo'):T('whyHi'))(WHYN[k][lang],fmt(k,v),fmt(k,Lm));}
+function verdictData(Sg){
+ const R=Sg.R,fin=R.fin,ifn=IFN(),ev=R.ev;
+ const ds=fin.d.map((d,i)=>`${layers===3?ifn[i]+' ':''}Ø ${d.toFixed(1)} mm`).join(' · ');
+ if(ev.length){const ks=[...new Set(ev.map(e=>e.k+'|'+e.i))].map(s=>{const [k,i]=s.split('|');return T('K')[k]+(layers===3&&+i>=0?` @ ${ifn[+i]}`:'');});
+  return {c:'ng',h:`<strong>${T('vNG')(ev.length)}</strong>${T('vFirst')(ev[0].t.toFixed(1))}${[...new Set(ks)].join(' + ')}<br>${T('vLeft')}: ${ds}`};}
+ const lo=fin.d.map((d,i)=>d<R.crit[i].lo?i:-1).filter(i=>i>=0);
+ if(lo.length)return {c:'amb',h:`<strong>${T('vLo')}</strong>${lo.map(i=>`${ifn[i]}: Ø ${fin.d[i].toFixed(1)} < ${R.crit[i].lo.toFixed(2)} mm`).join(' · ')}`};
+ const tg=fin.d.map((d,i)=>d<R.crit[i].tg?i:-1).filter(i=>i>=0);
+ return {c:'ok',h:`<strong>${T('vOK')}</strong>${ds} ${T('inside')} Ø ${(2*fin.rb[0]).toFixed(1)} mm`+(tg.length?` · ${T('vTg')} ${tg.map(i=>ifn[i]).join(', ')}`:'')};}
+
+/* ---------- main page ---------- */
+const main=Stage($('stage'),{onRun:S=>{const v=verdictData(S),w=whyNG(S.c,S.P);$('vd').className='verdict '+v.c;$('vd').innerHTML=`<div class="vh">${MARK(v.c==='ok',34)}<div>${w?`<p class="why">${esc(w)}</p>`:''}${v.h}</div></div>`;chisel();},onFrame:(S,o)=>metersUpd(S,o),onState:S=>{$('bp').textContent=S.playing?T('stop'):T('play');}});
+function applyStatic(){
+ document.documentElement.lang=lang;
+ document.querySelectorAll('[data-t]').forEach(e=>{const v=T(e.dataset.t);if(typeof v==='string')e.textContent=v;});
+ document.querySelectorAll('[data-h]').forEach(e=>{e.innerHTML=T(e.dataset.h);});
+ document.querySelectorAll('[data-layers]').forEach(b=>{b.textContent=T('L'+b.dataset.layers);b.setAttribute('aria-pressed',+b.dataset.layers===layers);});
+ document.querySelectorAll('[data-lang]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lang===lang));
+ document.querySelectorAll('[data-view],[data-dview]').forEach(b=>{const v=b.dataset.view||b.dataset.dview;b.textContent=v==='pair'?T('vPair'):T('vSeq');});
+ document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===pvView));
+ $('bok').innerHTML=MARK(true,22)+' '+T('ok');$('bng').innerHTML=MARK(false,22)+' '+T('ng');$('bs').textContent=T('slow');
+ $('plantb').textContent='⚙ '+T('plant')+': '+plantName();
+ main.sv.setAttribute('aria-label',lang==='th'?'ภาพหน้าตัดจุดเชื่อม Spot':'Spot weld cross-section');
+ $('ovh').textContent=T('ovh')(TOPICS.length);
+ $('ov').innerHTML=TOPICS.map(c=>`<tr data-id="${c.id}"><td data-l="${T('ovc1')}"><b>${numOf(c)}${L(c).n}</b></td><td data-l="${T('ovc2')}">${L(c).mk}</td><td data-l="${T('ovc3')}">${L(c).ty}</td><td data-l="${T('ovc4')}">${L(c).chk}</td></tr>`).join('');
+ pvButtons();
+}
+function tabs(){$('tabs').innerHTML=C.map((c,i)=>`<button data-i="${i}" aria-pressed="${c===cur}">${numOf(c)}${L(c).n}</button>`).join('');}
+function limInfo(k){if(!LIMF[k])return '';const f=LIMF[k],Lm=LIM()[k],q=PR[k],pos=Math.max(0,Math.min(100,(Lm-q.mn)/(q.mx-q.mn)*100)),ok=okOf(k,P[k]);
+ return {pos,line:`<div class="limt"><span>${esc(T('limit')(plantName(),f.lo?'≥':'≤',fmt(k,Lm)))} <span class="chip ${ok?'ok':'ng'}" id="lc-${k}">${ok?'OK':'NG'}</span></span><button class="linkb" data-edit="1">${T('edit')}</button></div>`};}
+function controls(){
+ $('ctl').innerHTML=cur.k.map(k=>{const q=PR[k];
+  if(k==='ovp')return `<div class="ctl"><span class="lb">${q[lang]}</span><div class="pick" id="ovp">${PNN().map((nm,i)=>`<button data-p="${i}" aria-pressed="${P.ovp===i}">${nm}</button>`).join('')}</div></div>`;
+  if(k==='tipd')return `<div class="ctl"><span class="lb">${q[lang]}</span><div class="pick" id="tipd">${[16,13].map(d=>`<button data-d="${d}" aria-pressed="${P.tipd===d}">Ø${d}</button>`).join('')}</div></div>`;
+  const li=limInfo(k);
+  return `<div class="ctl"><label for="in-${k}"><span>${q[lang]}</span><output id="o-${k}">${fmt(k,P[k])}</output></label><div class="rng">${li?`<i class="lim" style="left:calc(${li.pos}% + ${(8-li.pos*0.16).toFixed(1)}px)"></i>`:''}<input type="range" id="in-${k}" data-k="${k}" min="${q.mn}" max="${q.mx}" step="${q.st}" value="${P[k]}"></div>${li?li.line:''}</div>`}).join('')+(cur.id==='dia'?`<div class="ctl"><div class="limt"><span id="diaD"></span><button class="linkb" data-edit="1">${T('edit')}</button></div></div>`:'');
+ diaLine();
+}
+function diaLine(){const e=$('diaD');if(!e||P.fw==null)return;const ok=okOf('edge',P.edge);e.innerHTML=`${T('edgeD')} = <b>${P.edge.toFixed(1)} mm</b> · ${esc(T('limit')(plantName(),'≥',LIM().edge+' mm'))} <span class="chip ${ok?'ok':'ng'}">${ok?'OK':'NG'}</span>`;}
+function meters(){
+ const n=layers-1,ifn=IFN();
+ let h='';for(let i=0;i<n;i++)h+=`<div class="mt"><div class="mh"><span>${T('mN')} · ${ifn[i]}</span><b id="vd${i}"></b></div><div class="tr"><i id="md${i}" style="background:var(--melt)"></i><em class="lo" id="ml${i}"></em><em class="tg" id="mg${i}"></em><em class="cb" id="mc${i}"></em></div></div>`;
+ h+=`<p class="mkey">${T('mkey')}</p>`;
+ h+=`<div class="mt"><div class="mh"><span>${T('mJ')}</span><b id="vJ"></b></div><div class="tr"><i id="mJ" style="background:var(--gold)"></i><em style="left:${M.JC/3*100}%"></em></div></div>`;
+ h+=`<div class="mt"><div class="mh"><span>${T('mS')}</span><b id="vS"></b></div><div class="tr"><i id="mS" style="background:var(--gold)"></i><em style="left:${M.SC/3.5*100}%"></em></div></div>`;
+ $('mets').innerHTML=h;}
+function metersUpd(Sg,o){const R=Sg.R,set=(id,v,max)=>{const e=$(id);if(e)e.style.width=Math.min(100,v/max*100)+'%';},pos=(id,v)=>{const e=$(id);if(e)e.style.left=Math.min(99,v/9*100)+'%';};
+ o.d.forEach((d,i)=>{set('md'+i,d,9);pos('mc'+i,2*o.rb[i]);pos('ml'+i,R.crit[i].lo);pos('mg'+i,R.crit[i].tg);const v=$('vd'+i);if(v)v.textContent=`${d.toFixed(1)} mm · 3√t ${R.crit[i].lo.toFixed(2)}`;});
+ set('mJ',o.J,3);set('mS',o.Sx,3.5);
+ const vJ=$('vJ'),vS=$('vS');if(vJ)vJ.textContent=o.J?`${o.J.toFixed(2)} (${T('redl')} ${M.JC})`:T('noI');if(vS)vS.textContent=o.Sx?`${o.Sx.toFixed(2)} (${T('redl')} ${M.SC})`:T('noI');
+ const phs=phases(R),tq=Math.max(0,o.t-0.01),pn=(phs.find(q=>tq>=q[1]&&tq<q[2])||phs[phs.length-1])[0];
+ let st=`${T('ph')[pn]} · cycle ${o.t.toFixed(1)} · ${o.I.toFixed(1)} kA · ${o.f.toFixed(2)} kN`;if(Math.abs(Sg.D.dC)>0.05)st+=` · ${T('contact')} ${Math.abs(Sg.D.dC).toFixed(2)} mm`;$('now').textContent=st;}
+function texts(){
+ const c=L(cur);
+ $('ct').textContent=numOf(cur)+c.t;$('ck').textContent=T('kind')+c.ty;$('cl').textContent=c.l;$('tryit').textContent=T('tryp')+c.y;
+ $('n3').hidden=layers!==3;$('n3').textContent=T('n3');
+ $('xt').textContent=cur.id==='lab'?T('labx'):T('understand')+c.t;
+ $('xm').innerHTML=c.m.map(x=>`<li>${x}</li>`).join('');$('xs').innerHTML=c.s.map(x=>`<li>${x}</li>`).join('');$('xc').innerHTML=c.c.map(x=>`<li>${x}</li>`).join('');
+ $('xsrc').hidden=!cur.src;$('xsrc').textContent=cur.src?T('srcp')+cur.src:'';
+ modeBtns();}
+function modeBtns(){$('bok').setAttribute('aria-pressed',mode==='ok');$('bng').setAttribute('aria-pressed',mode==='ng');}
+function buildP(){P=presetP(cur,mode);}
+function run(play,cb){main.run(P,play,cb);}
+function setCase(i,noPlay){main.stop();cur=C[i];mode='ng';buildP();tabs();controls();texts();meters();if(!noPlay)run(true);else run(false);try{history.replaceState(null,'','#'+cur.id)}catch(e){}}
+function setMode(m){mode=m;buildP();controls();texts();run(true);}
+function setLayers(n){layers=n;save();buildP();applyStatic();controls();texts();meters();stackUI();run(true);if(PV.on)pvShow();}
+function setLang(l){lang=l;save();applyStatic();tabs();controls();texts();meters();stackUI();main.run(P,false);if(PV.on)pvShow();}
+function afterLimitChange(){applyStatic();buildP();controls();texts();run(false);if(PV.on)pvShow();}
+
+/* ---------- stack & chisel ---------- */
+function stackUI(){if(!$('stk'))return;const pl=STK[layers],nm=PNN();
+ $('stk').innerHTML=pl.map((x,i)=>`<tr><td><b>${nm[i]}</b></td><td><input type="number" id="pt${i}" data-i="${i}" data-f="t" min="0.5" max="3" step="0.05" value="${x.t}"></td><td><select id="ps${i}" data-i="${i}" data-f="s">${SCL.map((s,j)=>`<option value="${j}"${j===x.s?' selected':''}>${s}</option>`).join('')}</select></td><td>${i===0?`<input type="checkbox" id="pga" data-i="${i}" data-f="ga"${x.ga?' checked':''}>`:'<span class="chip na">—</span>'}</td></tr>`).join('');}
+function chisel(){const R=main.R;if(!R||!$('ckb'))return;const c=M.chisel(R.p),ifn=IFN(),RN=['','I','II','III','IV'];
+ const cell=r=>({1:['ok','na','ok'],2:['c','ok','ok'],3:['ng','c','ok'],4:['ng','ng','ok']}[r]);
+ const chip=v=>v==='ok'?`<span class="chip ok">${T('cOK')}</span>`:v==='c'?`<span class="chip c">${T('cC')}</span>`:v==='ng'?`<span class="chip ng">${T('cNG')}</span>`:`<span class="chip na">${T('cNA')}</span>`;
+ $('ckb').innerHTML=c.res.map(x=>{const d=R.fin.d[x.i],cr=R.crit[x.i],st=d<cr.lo?'ng':d<cr.tg?'c':'ok',cl=cell(x.r);
+  return `<tr><td data-l="${T('thI')}"><b>${ifn[x.i]}</b></td><td data-l="${T('thN')}">${d.toFixed(1)} mm ${chip(st)}</td><td data-l="${T('thR')}">${RN[x.r]} <span class="kind">(${SCL[x.pair[0]]} × ${SCL[x.pair[1]]})</span></td><td data-l="${T('thSC')}">${chip(cl[0])}</td><td data-l="${T('thST')}">${chip(cl[1])}</td><td data-l="${T('thUT')}">${chip(cl[2])}</td></tr>`;}).join('');
+ if(c.thin){const t=c.thin,ck=v=>v?'✓':'✗';
+  $('thin').innerHTML=`<div class="res"><b>${T('thinT')}</b><ul class="cond"><li>${ck(t.ga)} ${T('cGA')}</li><li>${ck(t.s270)} ${T('c270')}</li><li>${ck(t.tOk)} ${T('cT')}</li></ul><p style="margin:8px 0 0"><span class="chip ${t.ok?'ok':'ng'}">${t.ok?T('thinOK'):T('thinNG')}</span></p><p class="kind" style="margin:8px 0 0">${T('rule5')}</p></div>`;}
+ else $('thin').innerHTML='';}
+
+/* ---------- plant conditions dialog ---------- */
+const DL={sel:null,vals:null,view:pvView,delArm:false};
+function dlgOpen(){DL.sel=plant;DL.vals={...LIM()};DL.view=pvView;DL.delArm=false;$('newpl').hidden=true;$('dlmsg').textContent='';dlgRender();$('dlg').hidden=false;$('plsel').focus();}
+function dlgClose(){$('dlg').hidden=true;}
+function dlgRender(){const sel=$('plsel');sel.textContent='';const o0=document.createElement('option');o0.value='';o0.textContent=T('defPlant');sel.appendChild(o0);
+ Object.keys(plants).forEach(nm=>{const o=document.createElement('option');o.value=nm;o.textContent=nm;sel.appendChild(o);});sel.value=DL.sel||'';
+ const ro=!DL.sel;$('pldel').disabled=ro;$('pldel').textContent=DL.delArm?T('delQ'):T('del');
+ $('dlrows').innerHTML=Object.keys(LIMDEF).map(f=>{const q=LIMF[f];return `<tr><td>${LIMN[f][lang]}</td><td>${q.lo?'≥':'≤'}</td><td><input type="number" id="lv-${f}" data-f="${f}" min="${q.mn}" max="${q.mx}" step="${q.st}" value="${DL.vals[f]}"${ro?' disabled':''}> ${PR[f].u}</td><td>${LIMDEF[f]} ${PR[f].u}</td></tr>`;}).join('');
+ document.querySelectorAll('[data-dview]').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.dview===DL.view);b.textContent=b.dataset.dview==='pair'?T('vPair'):T('vSeq');});
+ if(ro)$('dlmsg').textContent=T('dfNote');}
+function dlgRead(){const v={};for(const f of Object.keys(LIMDEF)){const q=LIMF[f],x=+$('lv-'+f).value;if(!(x>=q.mn&&x<=q.mx)){$('dlmsg').textContent=`${LIMN[f][lang]}: ${T('badV')} ${q.mn}–${q.mx}`;return null;}v[f]=x;}return v;}
+$('plantb').addEventListener('click',dlgOpen);
+$('dlrows').addEventListener('input',e=>{const f=e.target.dataset.f;if(f)DL.vals[f]=+e.target.value;});
+$('plsel').addEventListener('change',e=>{DL.sel=e.target.value||null;DL.vals={...(DL.sel?plants[DL.sel]:LIMDEF)};DL.delArm=false;$('dlmsg').textContent='';dlgRender();});
+$('pladd').addEventListener('click',()=>{$('newpl').hidden=false;$('plname').value='';$('plname').focus();});
+$('plno').addEventListener('click',()=>{$('newpl').hidden=true;});
+$('plok').addEventListener('click',()=>{const nm=$('plname').value.trim();if(!nm){$('dlmsg').textContent=T('nameNeed');return;}if(plants[nm]){$('dlmsg').textContent=T('nameDup');return;}
+ const v=DL.sel?dlgRead():{...LIMDEF};if(!v)return;plants[nm]=v;DL.sel=nm;DL.vals={...v};savePlants();$('newpl').hidden=true;$('dlmsg').textContent='';dlgRender();});
+$('pldel').addEventListener('click',()=>{if(!DL.sel)return;if(!DL.delArm){DL.delArm=true;dlgRender();return;}delete plants[DL.sel];if(plant===DL.sel)plant=null;DL.sel=null;DL.vals={...LIMDEF};DL.delArm=false;savePlants();dlgRender();afterLimitChange();});
+$('dldef').addEventListener('click',()=>{DL.vals={...LIMDEF};DL.view='pair';dlgRender();});
+$('dlno').addEventListener('click',dlgClose);
+$('dlg').addEventListener('click',e=>{if(e.target.id==='dlg')dlgClose();const b=e.target.closest('[data-dview]');if(b){DL.view=b.dataset.dview;dlgRender();}});
+$('dlsave').addEventListener('click',()=>{if(DL.sel){const v=dlgRead();if(!v)return;plants[DL.sel]=v;}plant=DL.sel;pvView=DL.view;savePlants();save();$('dlmsg').textContent=T('saved');afterLimitChange();setTimeout(dlgClose,500);});
+
+/* ---------- presentation ---------- */
+const PV={on:false,i:0,tok:0,auto:false,loop:false,st:[],timers:[]};
+const slides=()=>[{k:'intro'},...TOPICS.map(c=>({k:'case',c})),{k:'sum'}];
+function pvButtons(){$('pvauto').textContent=PV.auto?T('autoOn'):T('auto');$('pvauto').setAttribute('aria-pressed',PV.auto);$('pvloop').textContent=T('loop');$('pvloop').setAttribute('aria-pressed',PV.loop);
+ document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===pvView));}
+function pvLater(tok,ms,f){const h=setTimeout(()=>{if(tok===PV.tok&&PV.on)f();},ms);PV.timers.push(h);}
+function pvClear(){PV.timers.forEach(clearTimeout);PV.timers=[];PV.st.forEach(s=>s.dispose());PV.st=[];}
+function pvOpen(){main.stop();PV.on=true;PV.i=0;$('pv').hidden=false;document.body.style.overflow='hidden';try{document.documentElement.requestFullscreen?.().catch(()=>{});}catch(e){}pvShow();}
+function pvClose(){PV.on=false;PV.tok++;PV.auto=false;PV.loop=false;pvClear();$('pv').hidden=true;document.body.style.overflow='';try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});}catch(e){}pvButtons();setCase(C.indexOf(cur),true);}
+function paramLine(c,p){return c.k.map(k=>k==='ovp'?`${PR.ovp[lang]}: ${PNN()[p.ovp]}`:k==='tipd'?`Ø${p.tipd}`:`${PR[k][lang]} ${fmt(k,p[k])}`).concat(c.id==='dia'?[`${T('edgeD')} ${p.edge.toFixed(1)} mm`]:[]).join(' · ');}
+function pvShow(){const sl=slides(),s=sl[PV.i],tok=++PV.tok;pvClear();pvButtons();
+ $('pvn').textContent=`${PV.i+1} / ${sl.length}`;$('pvd').innerHTML=sl.map((_,i)=>`<i class="${i===PV.i?'on':''}"></i>`).join('');
+ $('pvp').disabled=PV.i===0;$('pvnx').disabled=PV.i===sl.length-1;$('pvr').hidden=s.k!=='case';
+ const m=$('pvm');
+ if(s.k!=='case'){m.className='pv-main full';
+  if(s.k==='intro')m.innerHTML=`<div class="pv-full"><h1>${T('h1')}</h1><p class="lead">${T('lead')}</p><div class="two"><div class="rule"><i style="background:var(--melt)">1</i><div><b>${T('m1')}</b><br><span>${T('m1d')}</span></div></div><div class="rule"><i style="background:var(--red)">2</i><div><b>${T('m2')}</b><br><span>${T('m2d')}</span></div></div></div><h3 style="margin-top:22px">${T('pvIntro')(TOPICS.length)}</h3><div class="pick">${TOPICS.map(c=>`<span class="chip na" style="font-size:15px;padding:6px 12px">${numOf(c)}${L(c).n}</span>`).join('')}</div><p class="kind" style="margin-top:16px">${T('plant')}: ${esc(plantName())}</p></div>`;
+  else m.innerHTML=`<div class="pv-full"><h1 style="font-size:clamp(28px,3vw,40px)">${T('pvSum')}</h1><div class="scroll"><table><thead><tr><th>${T('ovc1')}</th><th>${T('ovc2')}</th><th>${T('ovc4')}</th></tr></thead><tbody>${TOPICS.map(c=>`<tr><td><b>${numOf(c)}${L(c).n}</b></td><td>${L(c).mk}</td><td>${L(c).chk}</td></tr>`).join('')}</tbody></table></div><p class="lead" style="margin-top:14px"><b>${T('hh')}:</b> ${T('h1d')} ${T('h3d')}</p></div>`;
+  if(PV.auto){if(s.k==='sum'){PV.auto=false;pvButtons();}else pvLater(tok,7000,()=>pvGo(1));}
+  return;}
+ const c=s.c,lc=L(c);cur=c;m.className='pv-main';
+ const pair=pvView==='pair';
+ const card=m2=>`<div class="pcard" data-m="${m2}"><div class="phd"><span class="mk">${MARK(m2==='ok',44)}</span><span class="chip ${m2==='ok'?'ok':'ng'}">${m2==='ok'?T('ok'):T('ng')}</span><span class="pl"></span><p class="why"></p></div><div class="stage">${stageHTML()}</div><div class="verdict"></div></div>`;
+ m.innerHTML=`<div class="pv-head"><h2>${numOf(c)}${lc.t}</h2><div class="facts"><div><b>${T('pvC')}</b>${lc.l}</div><div><b>${T('pvE')}</b>${lc.mk}</div><div><b>${T('pvP')}</b>${lc.chk}</div></div></div><div class="pair${pair?'':' one'}">${pair?card('ok')+card('ng'):card('ng')}</div><div class="pv-leg"><span>■ <span style="color:#ff8a1f">${T('lgN')}</span></span><span style="color:var(--hold)">┆ ${T('lgB')}</span><span>${T('lgI')} · ${T('lgF')}</span>${layers===3?`<span>${T('n3').split(':')[0]}</span>`:''}</div>`;
+ const mk=el=>Stage(el.querySelector('.stage'),{onRun:S=>{const v=verdictData(S),vd=el.querySelector('.verdict');vd.className='verdict '+v.c;vd.innerHTML=v.h;el.querySelector('.pl').textContent=paramLine(c,S.P);el.querySelector('.mk').innerHTML=MARK(v.c==='ok',44);const w=whyNG(c,S.P),we=el.querySelector('.why');we.textContent=w;we.hidden=!w;}});
+ const cards=[...m.querySelectorAll('.pcard')];
+ requestAnimationFrame(()=>{if(tok!==PV.tok)return;
+  if(pair){const [a,b]=cards.map(mk);PV.st=[a,b];let left=2;const done=()=>{if(--left>0)return;pvAfter(tok);};a.run(presetP(c,'ok'),true,done);b.run(presetP(c,'ng'),true,done);}
+  else{const a=mk(cards[0]);PV.st=[a];const hd=cards[0].querySelector('.chip');
+   const seq=()=>{hd.className='chip ng';hd.textContent=T('ng');a.run(presetP(c,'ng'),true,()=>pvLater(tok,1400,()=>{hd.className='chip ok';hd.textContent=T('ok');a.run(presetP(c,'ok'),true,()=>pvAfter(tok,seq));}));};
+   PV.seq=seq;seq();}
+ });}
+function pvAfter(tok,seq){if(tok!==PV.tok)return;
+ if(PV.loop)pvLater(tok,1200,()=>{if(pvView==='pair'){const [a,b]=PV.st;let left=2;const done=()=>{if(--left>0)return;pvAfter(tok);};const c=slides()[PV.i].c;a.run(presetP(c,'ok'),true,done);b.run(presetP(c,'ng'),true,done);}else (seq||PV.seq)();});
+ else if(PV.auto)pvLater(tok,2500,()=>pvGo(1));}
+function pvGo(d){const n=slides().length;PV.i=Math.max(0,Math.min(n-1,PV.i+d));pvShow();}
+$('pvauto').addEventListener('click',()=>{PV.auto=!PV.auto;if(PV.auto)PV.loop=false;pvButtons();pvShow();});
+$('pvloop').addEventListener('click',()=>{PV.loop=!PV.loop;if(PV.loop)PV.auto=false;pvButtons();pvShow();});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(!b)return;pvView=b.dataset.view;save();pvButtons();if(PV.on)pvShow();});
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{const b=e.target.closest('[data-layers],[data-lang]');if(!b)return;if(b.dataset.layers){if(+b.dataset.layers!==layers)setLayers(+b.dataset.layers);}else if(b.dataset.lang!==lang)setLang(b.dataset.lang);});
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setCase(+b.dataset.i);});
+$('ov').addEventListener('click',e=>{const r=e.target.closest('tr');if(r){setCase(C.findIndex(c=>c.id===r.dataset.id));$('tabs').scrollIntoView({behavior:'smooth'});}});
+$('bok').addEventListener('click',()=>setMode('ok'));$('bng').addEventListener('click',()=>setMode('ng'));
+function classify(){if(cur.lim){mode=okOf(cur.lim,P[cur.lim])?'ok':'ng';modeBtns();}
+ for(const k of Object.keys(LIMF)){const e=$('lc-'+k);if(e){const ok=okOf(k,P[k]);e.className='chip '+(ok?'ok':'ng');e.textContent=ok?'OK':'NG';}}diaLine();}
+$('ctl').addEventListener('input',e=>{const k=e.target.dataset.k;if(!k)return;P[k]=+e.target.value;derive(P);$('o-'+k).textContent=fmt(k,P[k]);classify();main.stop();run(false);});
+$('ctl').addEventListener('change',e=>{if(e.target.dataset.k)run(true);});
+$('ctl').addEventListener('click',e=>{if(e.target.closest('[data-edit]')){dlgOpen();return;}
+ const b=e.target.closest('[data-p]');if(b){P.ovp=+b.dataset.p;document.querySelectorAll('#ovp button').forEach(x=>x.setAttribute('aria-pressed',x===b));run(true);return;}
+ const d=e.target.closest('[data-d]');if(d){P.tipd=+d.dataset.d;derive(P);document.querySelectorAll('#tipd button').forEach(x=>x.setAttribute('aria-pressed',x===d));classify();run(true);}});
+$('bp').addEventListener('click',()=>{if(main.playing)main.stop();else run(true);});
+$('bs').addEventListener('click',()=>{slow=!slow;$('bs').setAttribute('aria-pressed',slow);});
+$('stk')&&$('stk').addEventListener('change',e=>{const t=e.target,i=+t.dataset.i,f=t.dataset.f;if(f==null)return;const pl=STK[layers][i];
+ if(f==='t'){let v=+t.value;if(!(v>=0.5&&v<=3)){v=Math.min(3,Math.max(0.5,v||pl.t));t.value=v;}pl.t=v;}else if(f==='s')pl.s=+t.value;else pl.ga=t.checked;
+ P.pl=STK[layers].map(x=>({...x}));run(false);});
+$('stkr')&&$('stkr').addEventListener('click',()=>{STK[layers]=M.base(layers).pl;stackUI();P.pl=STK[layers].map(x=>({...x}));run(false);});
+$('pres').addEventListener('click',pvOpen);$('pvx').addEventListener('click',pvClose);$('pvp').addEventListener('click',()=>pvGo(-1));$('pvnx').addEventListener('click',()=>pvGo(1));$('pvr').addEventListener('click',()=>pvShow());
+document.addEventListener('keydown',e=>{const tg=e.target.tagName;
+ if(!$('dlg').hidden){if(e.key==='Escape')dlgClose();return;}
+ if(['INPUT','SELECT','TEXTAREA'].includes(tg))return;
+ if(PV.on){if(['ArrowRight','PageDown'].includes(e.key)){e.preventDefault();pvGo(1);}else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();pvGo(-1);}else if(e.key==='Escape')pvClose();else if(e.key==='r'||e.key==='R')pvShow();else if(e.key==='a'||e.key==='A')$('pvauto').click();else if(e.key==='l'||e.key==='L')$('pvloop').click();return;}
+ if(e.key==='ArrowRight'){setCase((C.indexOf(cur)+1)%C.length);}else if(e.key==='ArrowLeft'){setCase((C.indexOf(cur)+C.length-1)%C.length);}
+ else if(e.key===' '&&tg!=='BUTTON'){e.preventDefault();$('bp').click();}else if(e.key==='p'||e.key==='P')pvOpen();});
+
+/* ---------- boot ---------- */
+applyStatic();stackUI();
+const hid=(location.hash||'').slice(1),hi=C.findIndex(c=>c.id===hid);
+setCase(hi>=0?hi:0);
+window.__sim={C,main,get P(){return P},setCase,setMode,setLayers,setLang,pvOpen,pvClose,pvGo,PV,get mode(){return mode},get plant(){return plant},plants,onsets,eff,presetP,LIM,finish(){main.stop();},dlgOpen};
+}
+
+</script>
+</body>
+</html>
